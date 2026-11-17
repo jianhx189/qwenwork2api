@@ -34,6 +34,7 @@ const PUBLIC_MODELS = {
   'qwen3.8-max': 'qwen3.8-max-preview',  // qmodel_latest 被套餐挡，用能跑的预览档承接
   'qwen3.8-max-preview': 'qwen3.8-max-preview',
   'qwen3.6-plus': 'q35model_preview',    // 套餐不含时上游回 403
+  'deepseek-v4.1-flash': 'deepseek-flash', // ★ 中转站侧通用名（fast-router/WB 一致），含 .1
   'deepseek-v4-flash': 'deepseek-flash', // ★ DeepSeek V4 Flash（客户端可选）
   'deepseek-flash': 'deepseek-flash',    // 别名
   'deepseek-v4-pro': 'deepseek-v4-pro',
