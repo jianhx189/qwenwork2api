@@ -773,7 +773,8 @@ const server = http.createServer(async (req, res) => {
   }
 })
 
-server.listen(PORT, '0.0.0.0', () => {
+const HOST = process.env.HOST || '0.0.0.0'
+server.listen(PORT, HOST, () => {
   const rt = runtimeInfo()
   console.log(`[qwenwork2api] listening :${PORT}`)
   console.log(`[qwenwork2api] admin  http://127.0.0.1:${PORT}/admin?token=${ADMIN_TOKEN}`)
