@@ -428,6 +428,13 @@ body.gated .console-shell{visibility:hidden}
   <div class="modal">
     <h3>添加千问办公账号</h3>
     <div class="sub">用浏览器打开下面的授权链接，确认授权后这里会自动出现账号。链接 5 分钟内有效。</div>
+    <div class="rowflex" style="margin-top:12px">
+      <span class="s">环境</span>
+      <select class="input" id="authOrigin" style="height:30px">
+        <option value="prod">标准（prod · 无每日领取）</option>
+        <option value="daily">daily（有每日领取接口）</option>
+      </select>
+    </div>
     <div class="linkbox">
       <input id="authUrl" readonly placeholder="正在生成…">
       <button class="btn" id="btnCopyUrl">复制</button>
@@ -616,7 +623,7 @@ function renderAccounts() {
         ? '<span class="badge">该环境无此接口</span>'
         : `<b>${claim ? (claim.ok ? '已领' + (claim.credits != null ? ' +' + claim.credits : '') : '未领到') : '未领取'}</b>`}
         ${claim?.message ? `<span class="dim">· ${esc(String(claim.message)).slice(0, 46)}</span>` : ''}</div>
-      <div class="kv">刷新于 ${a.lastRefresh ? ago(a.lastRefresh) : '—'}</div>
+      <div class="kv">环境 <b>${a.claimOrigin ? 'daily（可领取）' : 'prod'}</b> · 刷新于 ${a.lastRefresh ? ago(a.lastRefresh) : '—'}</div>
       <div class="rowflex" style="margin-top:12px">
         <button class="btn" data-act="claim" data-id="${a.id}"${claim?.unsupported ? ' title="这个账号所在环境没有每日领取接口，点一次可以再确认"' : ''}>领取积分</button>
         <button class="btn" data-act="refresh" data-id="${a.id}">刷新余额</button>
@@ -738,7 +745,8 @@ $('#btnCopyUrl').onclick = () => {
 async function startAuth() {
   clearInterval(pollTimer);
   try {
-    const r = await api('login/start', { method: 'POST', body: '{}' });
+    const origin = document.querySelector('#authOrigin')?.value || 'prod';
+    const r = await api('login/start', { method: 'POST', body: JSON.stringify({ origin }) });
     $('#authUrl').value = r.url;
     $('#btnOpenUrl').href = r.url;
     $('#pollMsg').textContent = '等待授权…（点“打开”在浏览器里确认）';

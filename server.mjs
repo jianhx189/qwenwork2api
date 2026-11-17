@@ -24,19 +24,25 @@ const PORT = Number(process.env.PORT || 4021)
 
 // 对外模型名 → 千问办公档位。档位键取自官方客户端 2.1.0 的
 // resources/dynamic-text/qwenwork.json（model.* 键）+ app.asar 的 tier 枚举。
+// ⚠️ 上游档位名以「客户端里真正可选的 key」为准（2026-11 实测）：
+//   lite / flash / pro / flagship / economy / advanced 可用；
+//   `standard`、`premium`、`qwork-lite`、`qmodel_latest`、`dmodel_latest`、`gmodel_latest` 被套餐挡（403 Model is not available for this user）。
+//   DeepSeek 的真实键是 `deepseek-flash` / `deepseek-v4-pro`，GLM 是 `glm-5.3`。
 const PUBLIC_MODELS = {
-  'qwen3.8max': 'qwork-advanced',        // 兼容旧调用
+  'qwen3.8max': 'qwork-advanced',        // 兼容旧调用（实测 200）
   'qwen3.8': 'qwork-advanced',
-  'qwen3.8-max': 'qmodel_latest',        // Qwen3.8-Max（官方「千问最强模型」）
+  'qwen3.8-max': 'qwen3.8-max-preview',  // qmodel_latest 被套餐挡，用能跑的预览档承接
   'qwen3.8-max-preview': 'qwen3.8-max-preview',
-  'qwen3.6-plus': 'q35model_preview',    // Qwen3.6-Plus-DogFooding
-  'deepseek-v4-pro': 'dmodel_latest',    // DeepSeek V4 Pro
-  'glm-5.3': 'gmodel_latest',            // GLM-5.3
-  'qwenwork-lite': 'qwork-lite',         // 经济
-  'qwenwork-standard': 'qwork-auto',     // 标准
-  'qwenwork-advanced': 'qwork-advanced', // 高级
-  'qwenwork-ultimate': 'qwork-ultimate', // 旗舰
-  'qwenwork-enterprise': 'safety',       // 企业专属
+  'qwen3.6-plus': 'q35model_preview',    // 套餐不含时上游回 403
+  'deepseek-v4-flash': 'deepseek-flash', // ★ DeepSeek V4 Flash（客户端可选）
+  'deepseek-flash': 'deepseek-flash',    // 别名
+  'deepseek-v4-pro': 'deepseek-v4-pro',
+  'glm-5.3': 'glm-5.3',
+  'qwenwork-lite': 'lite',               // 经济
+  'qwenwork-standard': 'flash',          // 标准 = flash（`standard` 这个键被挡）
+  'qwenwork-advanced': 'pro',            // 高级 = pro
+  'qwenwork-ultimate': 'flagship',        // 旗舰 = flagship
+  'qwenwork-enterprise': 'safety',       // 企业专属（套餐不含时 403）
 }
 // 大小写不敏感解析：上游调用常用 Qwen3.8-Max 这种写法
 const PUBLIC_LOWER = new Map(Object.keys(PUBLIC_MODELS).map(k => [k.toLowerCase(), k]))
@@ -394,10 +400,15 @@ const server = http.createServer(async (req, res) => {
       if (action === 'login/start' && req.method === 'POST') {
         const rt = runtimeInfo()
         if (!rt.ok) return json(res, 400, { error: rt.error })
-        const flow = startLogin(rt)
+        // origin 可选：'daily' 走 daily.gateway.qwenwork.cn（那个环境有每日领取接口）
+        const body = await readBody(req).catch(() => ({}))
+        const origin = body?.origin === 'daily'
+          ? (process.env.QWENWORK_DAILY_ORIGIN || 'https://daily.gateway.qwenwork.cn')
+          : undefined
+        const flow = startLogin(rt, origin)
         const id = randomUUID()
         flows.set(id, { flow, createdAt: Date.now() })
-        return json(res, 200, { flowId: id, url: flow.url, expiresIn: 300 })
+        return json(res, 200, { flowId: id, url: flow.url, origin: flow.origin || null, expiresIn: 300 })
       }
 
       if (action === 'login/poll' && req.method === 'GET') {
@@ -415,6 +426,8 @@ const server = http.createServer(async (req, res) => {
           state.accounts.push(acc)
         }
         Object.assign(acc, auth, { status: 'ok' })
+        // daily 环境授权的号：领取要回 daily 打（prod 没有那条路由）
+        if (item.flow.origin && item.flow.origin !== 'https://gateway.qwenwork.cn') acc.claimOrigin = item.flow.origin
         ensureDevice(acc)
         saveState()
         await refreshAccount(acc, { force: true }).catch(() => {})
@@ -692,8 +705,11 @@ const server = http.createServer(async (req, res) => {
 
       if (action === 'test' && req.method === 'POST') {
         // 后台「试跑」：非流式打一条，回耗时与正文，用来验证新档位能否出字
-        const { model = 'qwen3.8max', prompt = '用一句话介绍你自己' } = await readBody(req)
-        const hit = resolveModel(model)
+        const { model = 'qwen3.8max', prompt = '用一句话介绍你自己', upstream } = await readBody(req)
+        // upstream 直传：用来试还没收录的上游档位名（排障/挖新模型）
+        const hit = upstream
+          ? { publicModel: String(upstream), upstream: String(upstream) }
+          : resolveModel(model)
         if (!hit) return json(res, 400, { error: '模型不存在' })
         const rt = runtimeInfo()
         if (!rt.ok) return json(res, 400, { error: rt.error })
@@ -702,7 +718,7 @@ const server = http.createServer(async (req, res) => {
         const t0 = Date.now()
         try {
           const up = await chatResponse(
-            { model: hit.upstream, messages: [{ role: 'user', content: String(prompt).slice(0, 2000) }], max_tokens: 128, stream: false },
+            { model: hit.upstream, allowUnknown: !!upstream, messages: [{ role: 'user', content: String(prompt).slice(0, 2000) }], max_tokens: 128, stream: false },
             acc, rt, { signer: prepareQwenworkInfer })
           const raw = await up.text()
           let out = raw
