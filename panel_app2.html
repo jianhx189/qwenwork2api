@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>QwenWork 控制台</title>
+<style>/*__WB_CSS__*/</style>
+<style>/*__WB_CONSOLE_CSS__*/</style>
+<style>
+/* 本站补充：图表条、配额条、弹窗、登录页 */
+.bars{display:flex;align-items:flex-end;gap:2px;height:130px;margin-top:14px}
+.bars .b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:1px;min-width:0}
+.bars .b i{display:block;border-radius:2px 2px 0 0;background:var(--accent);opacity:.85;transition:height .45s cubic-bezier(.22,.61,.36,1)}
+.bars .b i.e{background:var(--bad);opacity:.9}
+.bars .b:hover i{opacity:1}
+.xaxis{display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:var(--dim-light)}
+.quota{height:6px;border-radius:99px;background:var(--panel3);overflow:hidden;margin-top:9px}
+.quota>i{display:block;height:100%;border-radius:99px;background:var(--accent2);transition:width .5s}
+.quota.mid>i{background:var(--warn)}
+.quota.low>i{background:var(--bad)}
+.rowflex{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.spread{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.stack{display:grid;gap:11px}
+.kv{display:flex;gap:6px;font-size:12px;color:var(--dim);flex-wrap:wrap}
+.kv b{color:var(--fg);font-weight:600}
+.tbl-scroll{max-height:540px;overflow:auto}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.input{height:32px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);font:inherit;font-size:13px;color:var(--fg);outline:none}
+.input:focus{border-color:var(--accent);background:var(--panel)}
+.modal-mask{position:fixed;inset:0;background:rgba(31,30,27,.42);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-md);width:520px;max-width:100%;padding:20px}
+.modal h3{margin:0 0 4px;font-size:15px;font-weight:650}
+.modal .sub{font-size:12px;color:var(--dim-light);line-height:1.7}
+.linkbox{display:flex;gap:6px;margin-top:12px}
+.linkbox input{flex:1;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot.ok{background:var(--accent2)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+.gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#efebe0;z-index:200}
+body.gated .console-shell{visibility:hidden}
+.gate .box{width:340px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;box-shadow:var(--shadow)}
+.gate h1{margin:0 0 4px;font-size:17px;font-weight:650}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn.danger{color:var(--bad);border-color:var(--line)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--terminal-bg);color:var(--terminal-fg);
+  padding:9px 16px;border-radius:8px;font-size:12.5px;z-index:99;box-shadow:var(--shadow-md);display:none}
+.spinner{width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="console-shell">
+  <aside class="console-sidebar">
+    <div class="console-nav-head">
+      <div class="console-mark">QW</div>
+      <div class="console-wordmark">QwenWork</div>
+    </div>
+    <div class="console-nav-group">
+      <div class="console-nav-caption">监控</div>
+      <button class="console-nav-link active" data-view="dash">数据看板</button>
+      <button class="console-nav-link" data-view="usage">用量分析</button>
+      <button class="console-nav-link" data-view="logs">调用日志</button>
+    </div>
+    <div class="console-nav-group">
+      <div class="console-nav-caption">资源</div>
+      <button class="console-nav-link" data-view="accounts">账号</button>
+      <button class="console-nav-link" data-view="keys">密钥</button>
+    </div>
+    <div class="console-nav-group">
+      <div class="console-nav-caption">系统</div>
+      <button class="console-nav-link" data-view="settings">设置</button>
+    </div>
+    <div class="console-sidebar-foot">
+      <span class="console-side-dot" id="sideDot"></span>
+      <span id="sideState">连接中</span>
+      <span class="mono" id="sideVer" style="margin-left:auto"></span>
+    </div>
+  </aside>
+
+  <div class="console-main">
+    <div class="console-contextbar">
+      <span class="console-product">qwenwork2api</span>
+      <span class="console-context-sep"></span>
+      <span class="console-service mono" id="ctxPort">:4021</span>
+      <span class="console-context-sep"></span>
+      <span id="ctxUpdate" class="dim">—</span>
+      <div class="console-context-actions">
+        <span class="pill" id="ctxPill">—</span>
+        <button class="btn" id="btnRefresh">刷新</button>
+        <a class="btn" href="https://github.com/jianhx189/qwenwork2api" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <!-- ============ 数据看板 ============ -->
+      <section class="console-view" id="view-dash">
+        <div class="pagehead"><h1 class="pagetitle">数据看板 <span class="pagesub" id="pageSub">—</span></h1></div>
+        <div class="kpis">
+          <div class="kpi big"><div class="accentbar" style="background:var(--accent)"></div>
+            <div class="k"><span class="ic">◆</span>今日调用</div>
+            <div class="v" id="kToday">—</div><div class="s" id="kTodaySub">—</div></div>
+          <div class="kpi big"><div class="accentbar" style="background:var(--accent2)"></div>
+            <div class="k"><span class="ic">✓</span>成功率</div>
+            <div class="v" id="kSuccess">—</div><div class="s" id="kSuccessSub">—</div></div>
+          <div class="kpi big"><div class="accentbar" style="background:var(--warn)"></div>
+            <div class="k"><span class="ic">⏱</span>平均耗时</div>
+            <div class="v" id="kLatency">—</div><div class="s" id="kLatencySub">—</div></div>
+          <div class="kpi big"><div class="accentbar" style="background:var(--think)"></div>
+            <div class="k"><span class="ic">◈</span>剩余积分</div>
+            <div class="v" id="kQuota">—</div><div class="s" id="kQuotaSub">—</div></div>
+        </div>
+        <div class="cards">
+          <div class="card" style="grid-column:span 2">
+            <div class="spread">
+              <div><div class="k" style="margin:0"><span class="ic">▤</span>近 24 小时调用</div><div class="s" id="chartSub">—</div></div>
+              <div class="legend"><span><i style="background:var(--accent)"></i>成功</span><span><i style="background:var(--bad)"></i>失败</span></div>
+            </div>
+            <div class="bars" id="chart"></div>
+            <div class="xaxis" id="xaxis"></div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">◔</span>模型分布</div><div class="s">今日按模型</div>
+            <div class="stack" id="modelDist" style="margin-top:12px"></div>
+          </div>
+        </div>
+        <div class="cards">
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">◈</span>账号</div><div class="s">积分与状态</div>
+            <div class="stack" id="acctMini" style="margin-top:12px"></div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">⌁</span>账号调用量</div><div class="s">今日按账号</div>
+            <div class="stack" id="acctDist" style="margin-top:12px"></div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">▦</span>最近调用</div><div class="s">最新 6 条</div>
+            <div class="stack" id="recentLogs" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 用量分析 ============ -->
+      <section class="console-view console-view-hidden" id="view-usage">
+        <div class="pagehead">
+          <h1 class="pagetitle">用量分析 <span class="pagesub" id="usageSub">—</span></h1>
+          <div class="seg" id="usageSeg">
+            <button data-d="7" class="on">近 7 天</button><button data-d="14">近 14 天</button><button data-d="30">近 30 天</button>
+          </div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="k"><span class="ic">◆</span>请求总数</div><div class="v" id="uTotal">—</div><div class="s" id="uTotalSub">—</div></div>
+          <div class="kpi"><div class="k"><span class="ic">✓</span>失败</div><div class="v" id="uErr">—</div><div class="s" id="uErrSub">—</div></div>
+          <div class="kpi"><div class="k"><span class="ic">⏱</span>平均耗时</div><div class="v" id="uAvg">—</div><div class="s">全窗口</div></div>
+          <div class="kpi"><div class="k"><span class="ic">◈</span>Token 量</div><div class="v" id="uTokens">—</div><div class="s">按日志 tokens 字段</div></div>
+        </div>
+        <div class="cards">
+          <div class="card" style="grid-column:span 2">
+            <div class="k" style="margin:0"><span class="ic">▤</span>每日趋势</div><div class="s">成功与失败堆叠</div>
+            <div class="bars" id="usageBars"></div><div class="xaxis" id="usageX"></div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">◔</span>按模型</div><div class="s">请求数与失败</div>
+            <div class="table-wrap tbl-scroll" style="margin-top:10px;max-height:260px">
+              <table><thead><tr><th>模型</th><th class="num">请求</th><th class="num">失败</th><th class="num">Token</th></tr></thead><tbody id="usageModel"></tbody></table>
+            </div>
+          </div>
+        </div>
+        <div class="cards">
+          <div class="card" style="grid-column:span 2">
+            <div class="k" style="margin:0"><span class="ic">▦</span>按天明细</div>
+            <div class="table-wrap tbl-scroll" style="margin-top:10px">
+              <table><thead><tr><th>日期</th><th class="num">请求</th><th class="num">失败</th><th class="num">Token</th><th class="num">平均耗时</th></tr></thead><tbody id="usageDay"></tbody></table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">⚿</span>按密钥</div><div class="s">谁在用</div>
+            <div class="table-wrap tbl-scroll" style="margin-top:10px;max-height:260px">
+              <table><thead><tr><th>密钥</th><th class="num">请求</th><th class="num">失败</th></tr></thead><tbody id="usageKey"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 账号 ============ -->
+      <section class="console-view console-view-hidden" id="view-accounts">
+        <div class="pagehead">
+          <h1 class="pagetitle">账号 <span class="pagesub" id="acctSub">—</span></h1>
+          <div class="rowflex">
+            <button class="btn" id="btnBulkRefresh">全部刷新余额</button>
+            <button class="btn" id="btnBulkClaim">全部领取积分</button>
+            <button class="btn primary" id="btnAddAccount">添加账号</button>
+          </div>
+        </div>
+        <div class="cards" id="acctCards"></div>
+      </section>
+
+      <!-- ============ 密钥 ============ -->
+      <section class="console-view console-view-hidden" id="view-keys">
+        <div class="pagehead">
+          <h1 class="pagetitle">密钥 <span class="pagesub">OpenAI 兼容调用凭据</span></h1>
+          <div class="rowflex"><button class="btn primary" id="btnAddKey">新建令牌</button></div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table><thead><tr><th>名称</th><th>密钥</th><th class="num">调用</th><th>状态</th><th class="num">操作</th></tr></thead>
+            <tbody id="keyRows"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 日志 ============ -->
+      <section class="console-view console-view-hidden" id="view-logs">
+        <div class="pagehead">
+          <h1 class="pagetitle">调用日志 <span class="pagesub" id="logSub">—</span></h1>
+          <div class="rowflex">
+            <input class="input" id="logSearch" placeholder="搜模型 / 账号 / 密钥" style="width:200px">
+            <div class="seg" id="logSeg">
+              <button data-f="all" class="on">全部</button><button data-f="ok">成功</button><button data-f="err">失败</button><button data-f="sys">系统</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap tbl-scroll">
+            <table><thead><tr><th>时间</th><th>类型</th><th>模型</th><th>账号</th><th class="num">耗时</th><th>详情</th></tr></thead>
+            <tbody id="logRows"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 设置 ============ -->
+      <section class="console-view console-view-hidden" id="view-settings">
+        <div class="pagehead"><h1 class="pagetitle">设置</h1></div>
+        <div class="cards">
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">⚿</span>面板密码</div>
+            <div class="s">改完立即生效，当前会话保持登录</div>
+            <div class="stack" style="margin-top:14px">
+              <input class="input" id="pwCur" type="password" placeholder="当前密码">
+              <input class="input" id="pwNew" type="password" placeholder="新密码（至少 6 位）">
+              <input class="input" id="pwNew2" type="password" placeholder="再输一次">
+              <button class="btn primary" id="btnPw" style="justify-content:center">修改密码</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">◈</span>每日免费积分</div>
+            <div class="s">千问办公的每日领取，每天每账号一次</div>
+            <div class="spread" style="margin-top:16px">
+              <span id="claimState">—</span>
+              <button class="btn" id="btnClaimToggle">切换</button>
+            </div>
+            <div class="kv" style="margin-top:12px">领取接口 <b class="mono">daily.gateway.qwenwork.cn</b></div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">▦</span>运行信息</div>
+            <div class="stack" style="margin-top:12px">
+              <div class="kv">服务 <b>qwenwork2api</b> · 端口 <b id="setPort">—</b></div>
+              <div class="kv">客户端伪装版本 <b id="setVer">—</b></div>
+              <div class="kv">WASM 签名组件 <b id="setWasm">—</b></div>
+              <div class="rowflex" style="margin-top:8px"><button class="btn" id="btnLogout">退出登录</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 登录 ============ -->
+<div class="gate" id="gate" style="display:none;background:#efebe0;z-index:200">
+  <div class="box">
+    <h1>QwenWork 控制台</h1>
+    <div class="sub">输入面板密码进入。</div>
+    <div class="stack" style="margin-top:16px">
+      <input class="input" id="pwInput" type="password" placeholder="面板密码" autocomplete="current-password">
+      <button class="btn primary" id="pwBtn" style="justify-content:center;height:34px">登录</button>
+      <div class="s" id="pwErr" style="color:var(--bad);min-height:16px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 添加账号弹窗 ============ -->
+<div class="modal-mask" id="addMask" style="display:none">
+  <div class="modal">
+    <h3>添加千问办公账号</h3>
+    <div class="sub">用浏览器打开下面的授权链接，确认授权后这里会自动出现账号。链接 5 分钟内有效。</div>
+    <div class="linkbox">
+      <input id="authUrl" readonly placeholder="正在生成…">
+      <button class="btn" id="btnCopyUrl">复制</button>
+      <a class="btn" id="btnOpenUrl" target="_blank" rel="noopener">打开</a>
+    </div>
+    <div class="kv" style="margin-top:12px"><span class="dot warn" id="pollDot"></span><span id="pollMsg">等待授权…</span></div>
+    <div class="rowflex" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn" id="btnReauth">重新生成</button>
+      <button class="btn" id="btnCloseAdd">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf = n => (n ?? 0).toLocaleString('en-US');
+const ms = v => !v ? '—' : v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 's' : Math.round(v) + 'ms';
+const pct = v => (v * 100).toFixed(v > 0.995 ? 1 : 2) + '%';
+const hhmm = t => new Date(t).toTimeString().slice(0, 5);
+const ago = t => { const d = (Date.now() - t) / 1000; if (d < 60) return Math.round(d) + ' 秒前'; if (d < 3600) return Math.round(d / 60) + ' 分钟前'; if (d < 86400) return Math.round(d / 3600) + ' 小时前'; return Math.round(d / 86400) + ' 天前' };
+
+const S = { token: localStorage.getItem('qw_token') || '', stats: null, state: null, logs: [], usage: null, view: 'dash', filter: 'all', q: '', usageDays: 7, updated: 0, settings: null };
+
+function hdr() { return { Authorization: 'Bearer ' + S.token, 'Content-Type': 'application/json' } }
+
+async function api(path, opt = {}) {
+  const r = await fetch('/admin/api/' + path, { ...opt, headers: hdr(), cache: 'no-store' });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { logoutLocal(); throw new Error('unauthorized') }
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+function logoutLocal() { localStorage.removeItem('qw_token'); S.token = ''; showGate() }
+function showGate(msg) { document.body.classList.add('gated'); $('#gate').style.display = 'flex'; if (msg) $('#pwErr').textContent = msg; setTimeout(() => $('#pwInput').focus(), 40) }
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(() => el.style.display = 'none', 2400) }
+
+/* ---------- 登录 ---------- */
+$('#pwBtn').onclick = doLogin;
+$('#pwInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin() });
+async function doLogin() {
+  const pw = $('#pwInput').value;
+  if (!pw) return;
+  $('#pwErr').textContent = '';
+  $('#pwBtn').disabled = true;
+  try {
+    const r = await fetch('/admin/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { $('#pwErr').textContent = j.error || '登录失败'; return }
+    S.token = j.token; localStorage.setItem('qw_token', j.token);
+    $('#gate').style.display = 'none'; document.body.classList.remove('gated'); $('#pwInput').value = '';
+    await load(true);
+  } catch (e) { $('#pwErr').textContent = '无法连接服务：' + e.message }
+  finally { $('#pwBtn').disabled = false }
+}
+
+/* ---------- 视图切换 ---------- */
+document.querySelectorAll('.console-nav-link').forEach(b => b.onclick = () => setView(b.dataset.view));
+async function setView(name) {
+  S.view = name;
+  document.querySelectorAll('.console-nav-link').forEach(x => x.classList.toggle('active', x.dataset.view === name));
+  document.querySelectorAll('.console-view').forEach(v => v.classList.toggle('console-view-hidden', v.id !== 'view-' + name));
+  if (name === 'logs') await loadLogs();
+  if (name === 'usage') await loadUsage();
+  if (name === 'settings') await loadSettings();
+}
+
+/* ---------- 看板 ---------- */
+function renderDash() {
+  const st = S.stats || {}, accts = S.state?.accounts || [];
+  const today = st.today || 0, todayErr = st.todayErr || 0;
+  $('#kToday').textContent = nf(today);
+  $('#kTodaySub').textContent = `累计 ${nf(st.total || 0)} 次 · 失败 ${nf(todayErr)}`;
+  const rate = today ? (today - todayErr) / today : 1;
+  $('#kSuccess').textContent = pct(rate);
+  $('#kSuccessSub').textContent = `成功 ${nf(today - todayErr)} / ${nf(today)}`;
+  $('#kLatency').textContent = ms(st.avgMs || 0);
+  $('#kLatencySub').textContent = `P95 ${ms(st.p95Ms || 0)}`;
+  const q = accts.reduce((s, a) => s + (a.quota?.remaining ?? 0), 0);
+  $('#kQuota').textContent = q ? q.toFixed(1) : '—';
+  $('#kQuotaSub').textContent = `${accts.filter(a => a.status === 'ok').length}/${accts.length} 个账号可用`;
+  $('#pageSub').textContent = st.total ? `共 ${nf(st.total)} 次调用` : '暂无调用记录';
+
+  const hs = st.hourly || [];
+  const max = Math.max(1, ...hs.map(h => h.n));
+  $('#chart').innerHTML = hs.map(h => {
+    const okH = Math.round(((h.n - h.err) / max) * 130), errH = Math.round((h.err / max) * 130);
+    return `<div class="b" title="${hhmm(h.t)} · 成功 ${h.n - h.err} · 失败 ${h.err} · 平均 ${ms(h.avgMs)}">
+      <i class="e" style="height:${errH}px"></i><i style="height:${okH}px"></i></div>`;
+  }).join('');
+  $('#xaxis').innerHTML = hs.length ? [0, 6, 12, 18].map(i => `<span>${hhmm(hs[i].t)}</span>`).join('') + '<span>现在</span>' : '';
+  $('#chartSub').textContent = `24 小时 ${nf(hs.reduce((s, h) => s + h.n, 0))} 次 · 失败 ${nf(hs.reduce((s, h) => s + h.err, 0))}`;
+
+  const bm = (st.byModelToday?.length ? st.byModelToday : st.byModel || []).slice(0, 8);
+  const mMax = Math.max(1, ...bm.map(m => m.n));
+  $('#modelDist').innerHTML = bm.length ? bm.map(m => `<div>
+      <div class="spread"><span class="mono">${esc(m.model)}</span><span class="dim">${nf(m.n)}</span></div>
+      <div class="quota"><i style="width:${Math.max(2, (m.n / mMax) * 100)}%"></i></div></div>`).join('')
+    : `<div class="empty">今天还没有调用</div>`;
+
+  $('#acctMini').innerHTML = accts.length ? accts.map(a => {
+    const rem = a.quota?.remaining ?? 0, tot = a.quota?.total ?? 0, r = tot ? rem / tot : 0;
+    return `<div>
+      <div class="spread"><span>${esc(a.email || a.name || a.uid)}</span>
+        <span class="badge ${a.status === 'ok' ? 'ok' : 'bad'}">${esc(a.status || '未知')}</span></div>
+      <div class="quota ${r < .15 ? 'low' : r < .4 ? 'mid' : ''}"><i style="width:${Math.max(1, r * 100)}%"></i></div>
+      <div class="kv"><b>${rem.toFixed(1)}</b> / ${tot || '—'} 分</div></div>`;
+  }).join('') : `<div class="empty">还没有账号</div>`;
+
+  const ba = (st.byAccount || []).slice(0, 8);
+  const aMax = Math.max(1, ...ba.map(m => m.n));
+  $('#acctDist').innerHTML = ba.length ? ba.map(m => `<div>
+      <div class="spread"><span>${esc(m.account)}</span><span class="dim">${nf(m.n)}${m.err ? ' · <span class="bad">失败 ' + m.err + '</span>' : ''}</span></div>
+      <div class="quota"><i style="width:${Math.max(2, (m.n / aMax) * 100)}%"></i></div></div>`).join('')
+    : `<div class="empty">今天还没有调用</div>`;
+
+  const recent = S.logs.filter(l => l.type === 'chat' || l.type === 'chat_error').slice(0, 6);
+  $('#recentLogs').innerHTML = recent.length ? recent.map(l => `<div class="spread" style="font-size:12px">
+      <span class="mono dim">${hhmm(l.ts)}</span>
+      <span class="mono" style="max-width:120px;overflow:hidden;text-overflow:ellipsis">${esc(l.model || l.type)}</span>
+      <span class="badge ${l.type === 'chat_error' ? 'bad' : l.type === 'chat' ? 'ok' : ''}">${l.ms ? ms(l.ms) : '—'}</span></div>`).join('')
+    : `<div class="empty">暂无</div>`;
+}
+
+/* ---------- 用量 ---------- */
+async function loadUsage() {
+  try {
+    const u = await api('usage?days=' + S.usageDays);
+    S.usage = u;
+    $('#usageSub').textContent = `近 ${u.days} 天`;
+    $('#uTotal').textContent = nf(u.total);
+    $('#uTotalSub').textContent = u.days + ' 天累计';
+    $('#uErr').textContent = nf(u.errors);
+    $('#uErrSub').textContent = u.total ? pct(u.errors / u.total) : '—';
+    $('#uAvg').textContent = ms(u.avgMs);
+    $('#uTokens').textContent = nf(u.tokens);
+    // 补齐窗口内没有调用的日期，避免柱子只有两根、宽度被拉满
+    const got = new Map((u.byDay || []).map(d => [d.day, d]));
+    const days = [];
+    const base = new Date(); base.setHours(12, 0, 0, 0);
+    for (let i = u.days - 1; i >= 0; i--) {
+      const d = new Date(base); d.setDate(d.getDate() - i);
+      const key = new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);
+      days.push(got.get(key) || { day: key, n: 0, err: 0, tokens: 0, avgMs: 0 });
+    }
+    const max = Math.max(1, ...days.map(d => d.n));
+    $('#usageBars').innerHTML = days.map(d => {
+      const okH = Math.round(((d.n - d.err) / max) * 130), errH = Math.round((d.err / max) * 130);
+      return `<div class="b" title="${d.day} · ${d.n} 次 · 失败 ${d.err}"><i class="e" style="height:${errH}px"></i><i style="height:${okH}px"></i></div>`;
+    }).join('') || '<div class="empty">窗口内没有调用</div>';
+    $('#usageX').innerHTML = days.length ? `<span>${days[0].day.slice(5)}</span><span>${days[days.length - 1].day.slice(5)}</span>` : '';
+    $('#usageModel').innerHTML = (u.byModel || []).map(m => `<tr><td class="mono">${esc(m.model)}</td><td class="num">${nf(m.n)}</td><td class="num">${m.err ? '<span class="bad">' + m.err + '</span>' : 0}</td><td class="num">${nf(m.tokens)}</td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">无数据</div></td></tr>';
+    $('#usageKey').innerHTML = (u.byKey || []).map(k => `<tr><td>${esc(k.key)}</td><td class="num">${nf(k.n)}</td><td class="num">${k.err || 0}</td></tr>`).join('') || '<tr><td colspan="3"><div class="empty">无数据</div></td></tr>';
+    $('#usageDay').innerHTML = days.slice().reverse().map(d => `<tr><td class="mono">${d.day}</td><td class="num">${nf(d.n)}</td><td class="num">${d.err ? '<span class="bad">' + d.err + '</span>' : 0}</td><td class="num">${nf(d.tokens)}</td><td class="num">${ms(d.avgMs)}</td></tr>`).join('') || '<tr><td colspan="5"><div class="empty">无数据</div></td></tr>';
+  } catch (e) { if (e.message !== 'unauthorized') toast('用量加载失败：' + e.message) }
+}
+document.querySelectorAll('#usageSeg button').forEach(b => b.onclick = () => {
+  S.usageDays = Number(b.dataset.d);
+  document.querySelectorAll('#usageSeg button').forEach(x => x.classList.toggle('on', x === b));
+  loadUsage();
+});
+
+/* ---------- 账号 ---------- */
+function renderAccounts() {
+  const accts = S.state?.accounts || [];
+  $('#acctSub').textContent = `${accts.length} 个账号 · ${accts.filter(a => a.status === 'ok').length} 个可用`;
+  $('#acctCards').innerHTML = accts.length ? accts.map(a => {
+    const rem = a.quota?.remaining ?? 0, tot = a.quota?.total ?? 0, r = tot ? rem / tot : 0;
+    const fp = a.fingerprint || {};
+    const claim = a.claim;
+    return `<div class="card">
+      <div class="spread">
+        <div><div class="k" style="margin:0">${esc(a.email || a.name || a.uid)}</div>
+          <div class="s">${esc(a.plan || '—')} · ${esc(a.organizationId || '无组织')}</div></div>
+        <span class="badge ${a.status === 'ok' ? 'ok' : 'bad'}">${esc(a.status || '未知')}</span>
+      </div>
+      <div class="quota ${r < .15 ? 'low' : r < .4 ? 'mid' : ''}"><i style="width:${Math.max(1, r * 100)}%"></i></div>
+      <div class="kv" style="margin-top:6px"><b>${rem.toFixed(1)}</b> / ${tot || '—'} 分</div>
+      <div class="kv" style="margin-top:10px">设备指纹 <b class="mono">${esc(fp.machineId || '—')}</b></div>
+      <div class="kv">${esc(fp.platform || '—')} ${esc(fp.arch || '')} · 客户端 ${esc(fp.version || '—')}${fp.saltRot ? ` · 已换 ${fp.saltRot} 次` : ''}</div>
+      <div class="kv">每日领取 <b>${claim ? (claim.ok ? '已领' + (claim.credits != null ? ' +' + claim.credits : '') : '未领到') : '未领取'}</b>
+        ${claim?.message ? `<span class="dim">· ${esc(String(claim.message)).slice(0, 46)}</span>` : ''}</div>
+      <div class="kv">刷新于 ${a.lastRefresh ? ago(a.lastRefresh) : '—'}</div>
+      <div class="rowflex" style="margin-top:12px">
+        <button class="btn" data-act="claim" data-id="${a.id}">领取积分</button>
+        <button class="btn" data-act="refresh" data-id="${a.id}">刷新余额</button>
+        <button class="btn" data-act="fingerprint" data-id="${a.id}">换指纹</button>
+        <button class="btn danger" data-act="delete" data-id="${a.id}">删除</button>
+      </div>
+    </div>`;
+  }).join('') : `<div class="card"><div class="empty">还没有账号<br><span class="dim">点右上角「添加账号」，用浏览器完成授权</span></div></div>`;
+}
+
+/* ---------- 密钥 ---------- */
+function renderKeys() {
+  const keys = S.state?.keys || [];
+  $('#keyRows').innerHTML = keys.length ? keys.map(k => `<tr>
+    <td>${esc(k.name || '默认令牌')}</td>
+    <td class="mono dim">${esc((k.key || '').slice(0, 10))}…${esc((k.key || '').slice(-4))}</td>
+    <td class="num">${nf(k.requests || 0)}</td>
+    <td><span class="badge ${k.disabled ? 'bad' : 'ok'}">${k.disabled ? '已停用' : '启用'}</span></td>
+    <td class="num">
+      <button class="btn" data-kact="copy" data-id="${k.id}">复制</button>
+      <button class="btn" data-kact="toggle" data-id="${k.id}">${k.disabled ? '启用' : '停用'}</button>
+      <button class="btn danger" data-kact="del" data-id="${k.id}">删除</button>
+    </td></tr>`).join('') : `<tr><td colspan="5"><div class="empty">还没有令牌</div></td></tr>`;
+}
+
+/* ---------- 日志 ---------- */
+function renderLogs() {
+  const f = S.filter, q = S.q.toLowerCase();
+  const rows = S.logs.filter(l => {
+    const okType = f === 'all' ? true : f === 'ok' ? l.type === 'chat' : f === 'err' ? l.type === 'chat_error' : !['chat', 'chat_error'].includes(l.type);
+    if (!okType) return false;
+    if (!q) return true;
+    return [l.model, l.account, l.key, l.error, l.type].some(v => String(v || '').toLowerCase().includes(q));
+  });
+  $('#logSub').textContent = `${rows.length} / ${S.logs.length} 条`;
+  $('#logRows').innerHTML = rows.length ? rows.map(l => {
+    const isErr = l.type === 'chat_error';
+    return `<tr>
+      <td class="mono dim">${new Date(l.ts).toTimeString().slice(0, 8)}</td>
+      <td><span class="badge ${isErr ? 'bad' : l.type === 'chat' ? 'ok' : ''}">${esc(l.type)}</span></td>
+      <td class="mono">${esc(l.model || '—')}</td>
+      <td>${esc(l.account || '—')}</td>
+      <td class="num">${l.ms ? ms(l.ms) : '—'}</td>
+      <td class="dim">${esc(l.error || (l.tokens ? l.tokens + ' tok' : (l.key || '')))}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6"><div class="empty">没有符合条件的日志</div></td></tr>`;
+}
+
+/* ---------- 设置 ---------- */
+async function loadSettings() {
+  try {
+    const s = await api('settings');
+    S.settings = s.settings;
+    $('#claimState').innerHTML = s.settings.claimEnabled
+      ? '<span class="badge ok">已开启</span> 每小时巡检，每号每天一次'
+      : '<span class="badge bad">已关闭</span> 不会自动领取';
+    $('#setPort').textContent = s.runtime.port;
+    $('#setVer').textContent = s.runtime.version + ' / ' + s.runtime.releaseVersion;
+    const rt = S.state?.runtime;
+    $('#setWasm').innerHTML = rt?.ok ? `<span class="badge ok">OK</span> ${esc(rt.sha256?.slice(0, 12) || '')}` : '<span class="badge bad">缺失</span>';
+  } catch (e) { if (e.message !== 'unauthorized') toast(e.message) }
+}
+$('#btnClaimToggle').onclick = async () => {
+  const next = !(S.settings?.claimEnabled !== false);
+  await api('settings', { method: 'POST', body: JSON.stringify({ claimEnabled: next }) });
+  await loadSettings(); toast(next ? '每日领取已开启' : '每日领取已关闭');
+};
+$('#btnPw').onclick = async () => {
+  const cur = $('#pwCur').value, a = $('#pwNew').value, b = $('#pwNew2').value;
+  if (a !== b) return toast('两次输入的新密码不一致');
+  if (a.length < 6) return toast('新密码至少 6 位');
+  try {
+    const r = await api('password', { method: 'POST', body: JSON.stringify({ current: cur, next: a }) });
+    if (r.token) { S.token = r.token; localStorage.setItem('qw_token', r.token) }
+    $('#pwCur').value = $('#pwNew').value = $('#pwNew2').value = '';
+    toast('密码已修改');
+  } catch (e) { toast(e.message) }
+};
+$('#btnLogout').onclick = async () => { try { await api('logout', { method: 'POST' }) } catch {} logoutLocal() };
+
+/* ---------- 添加账号 ---------- */
+let pollTimer = null;
+$('#btnAddAccount').onclick = async () => {
+  $('#addMask').style.display = 'flex';
+  $('#authUrl').value = '';
+  $('#pollMsg').textContent = '正在生成授权链接…';
+  $('#pollDot').className = 'dot warn';
+  await startAuth();
+};
+$('#btnReauth').onclick = startAuth;
+$('#btnCloseAdd').onclick = () => { $('#addMask').style.display = 'none'; clearInterval(pollTimer) };
+$('#btnCopyUrl').onclick = () => {
+  const v = $('#authUrl').value; if (!v) return;
+  navigator.clipboard?.writeText(v).then(() => toast('链接已复制'), () => { $('#authUrl').select(); document.execCommand('copy'); toast('链接已复制') });
+};
+async function startAuth() {
+  clearInterval(pollTimer);
+  try {
+    const r = await api('login/start', { method: 'POST', body: '{}' });
+    $('#authUrl').value = r.url;
+    $('#btnOpenUrl').href = r.url;
+    $('#pollMsg').textContent = '等待授权…（点“打开”在浏览器里确认）';
+    $('#pollDot').className = 'dot warn';
+    let tries = 0;
+    pollTimer = setInterval(async () => {
+      tries++;
+      try {
+        const p = await api('login/poll?flowId=' + encodeURIComponent(r.flowId));
+        if (p.status === 'ok') {
+          clearInterval(pollTimer);
+          $('#pollMsg').textContent = '授权成功，账号已添加';
+          $('#pollDot').className = 'dot ok';
+          await load(true);
+          setTimeout(() => { $('#addMask').style.display = 'none' }, 1200);
+          return;
+        }
+        $('#pollMsg').textContent = `等待授权…已等待 ${tries * 3}s`;
+      } catch (e) {
+        if (e.message !== 'unauthorized') { $('#pollMsg').textContent = '出错：' + e.message; $('#pollDot').className = 'dot bad'; clearInterval(pollTimer) }
+      }
+    }, 3000);
+    setTimeout(() => clearInterval(pollTimer), 10 * 60 * 1000);
+  } catch (e) {
+    $('#pollMsg').textContent = '无法生成授权链接：' + e.message;
+    $('#pollDot').className = 'dot bad';
+  }
+}
+
+/* ---------- 交互 ---------- */
+document.addEventListener('click', async ev => {
+  const t = ev.target.closest('button[data-act],button[data-kact]');
+  if (!t) return;
+  const id = t.dataset.id;
+  t.disabled = true;
+  try {
+    if (t.dataset.act === 'claim') {
+      const r = await api('account/claim', { method: 'POST', body: JSON.stringify({ id }) });
+      await load(true);
+      toast(r.ok ? ('已领取' + (r.claim.credits != null ? ' +' + r.claim.credits + ' 分' : '')) : ('未领到：' + (r.claim.message || '').slice(0, 60)));
+    }
+    if (t.dataset.act === 'refresh') { await api('account/refresh', { method: 'POST', body: JSON.stringify({ id }) }); await load(true); toast('余额已刷新') }
+    if (t.dataset.act === 'fingerprint') {
+      if (!confirm('换指纹会生成新的设备标识，账号可能需要重新授权。继续？')) return;
+      await api('account/fingerprint', { method: 'POST', body: JSON.stringify({ id }) }); await load(true); toast('指纹已更换');
+    }
+    if (t.dataset.act === 'delete') {
+      if (!confirm('删除这个账号？')) return;
+      await api('account/delete', { method: 'POST', body: JSON.stringify({ id }) }); await load(true);
+    }
+    if (t.dataset.kact === 'copy') {
+      const r = await api('keys/full?id=' + encodeURIComponent(id));
+      navigator.clipboard?.writeText(r.key || '').then(() => toast('已复制完整密钥'), () => toast('复制失败，请手动查看'));
+    }
+    if (t.dataset.kact === 'toggle') {
+      const k = (S.state.keys || []).find(x => x.id === id);
+      await api('keys', { method: 'POST', body: JSON.stringify({ id, disabled: !k.disabled }) }); await load(true);
+    }
+    if (t.dataset.kact === 'del') {
+      if (!confirm('删除这个令牌？调用会立刻失效')) return;
+      await api('keys/delete', { method: 'POST', body: JSON.stringify({ id }) }); await load(true);
+    }
+  } catch (e) { if (e.message !== 'unauthorized') alert('操作失败：' + e.message) }
+  finally { t.disabled = false }
+});
+
+$('#btnBulkRefresh').onclick = () => bulk('refresh');
+$('#btnBulkClaim').onclick = () => bulk('claim');
+async function bulk(op) {
+  const label = op === 'refresh' ? '刷新余额' : '领取积分';
+  if (!confirm(`对全部账号执行「${label}」？可能要几十秒。`)) return;
+  toast(label + '中…');
+  try {
+    const r = await api('bulk', { method: 'POST', body: JSON.stringify({ op }) });
+    const ok = (r.results || []).filter(x => x.ok).length;
+    await load(true);
+    toast(`${label}完成：${ok}/${(r.results || []).length} 成功`);
+  } catch (e) { if (e.message !== 'unauthorized') toast(label + '失败：' + e.message) }
+}
+$('#btnAddKey').onclick = async () => {
+  const name = prompt('令牌名称', '默认令牌'); if (name === null) return;
+  try {
+    const r = await api('keys', { method: 'POST', body: JSON.stringify({ name }) });
+    await load(true);
+    alert('令牌已创建，请保存（只显示这一次）：\n\n' + r.key);
+  } catch (e) { alert(e.message) }
+};
+$('#logSearch').oninput = e => { S.q = e.target.value.trim(); renderLogs() };
+document.querySelectorAll('#logSeg button').forEach(b => b.onclick = () => {
+  S.filter = b.dataset.f;
+  document.querySelectorAll('#logSeg button').forEach(x => x.classList.toggle('on', x === b));
+  renderLogs();
+});
+
+/* ---------- 数据加载 ---------- */
+async function load(quiet) {
+  try {
+    const [stats, state, logs] = await Promise.all([api('stats'), api('state'), api('logs?n=200').catch(() => ({ logs: [] }))]);
+    S.stats = stats; S.state = state; S.logs = logs.logs || [];
+    S.updated = Date.now();
+    $('#ctxPill').textContent = '运行中'; $('#ctxPill').className = 'pill ok';
+    $('#sideDot').className = 'console-side-dot';
+    $('#sideState').textContent = state.runtime?.ok ? '已连接' : '签名组件缺失';
+    $('#sideVer').textContent = 'v' + (state.runtime?.version || '');
+    $('#ctxPort').textContent = ':' + (location.port || '4021');
+    renderDash(); renderAccounts(); renderKeys(); renderLogs();
+    if (!quiet) toast('已刷新');
+  } catch (e) {
+    if (e.message === 'unauthorized') return;
+    $('#ctxPill').textContent = '连接失败'; $('#ctxPill').className = 'pill bad';
+    $('#sideDot').className = 'console-side-dot bad';
+    $('#sideState').textContent = e.message.slice(0, 40);
+  }
+}
+async function loadLogs() {
+  try { const r = await api('logs?n=300'); S.logs = r.logs || []; renderLogs(); renderDash_recentOnly() } catch {}
+}
+function renderDash_recentOnly() { if (S.view === 'dash') renderDash() }
+
+$('#btnRefresh').onclick = () => { load(); if (S.view === 'usage') loadUsage(); if (S.view === 'settings') loadSettings() };
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(true) });
+setInterval(() => { if (!document.hidden && S.view === 'dash') load(true) }, 5000);
+setInterval(() => { if (!document.hidden && S.view === 'logs') loadLogs() }, 8000);
+setInterval(() => { if (!document.hidden && S.updated) $('#ctxUpdate').textContent = ago(S.updated) + '更新' }, 5000);
+
+/* ---------- 启动 ---------- */
+(async function boot() {
+  const qt = new URLSearchParams(location.search).get('token');
+  if (qt) { S.token = qt; localStorage.setItem('qw_token', qt) }
+  if (!S.token) { showGate(); return }
+  try {
+    const r = await fetch('/admin/api/session', { headers: hdr() });
+    const j = await r.json().catch(() => ({}));
+    if (!j.ok) { logoutLocal(); return }
+    await load(true);
+    const want = (location.hash || '').replace('#', '');
+    if (want === 'add') { await setView('accounts'); $('#btnAddAccount').click(); return }
+    if (want && document.getElementById('view-' + want)) await setView(want);
+  } catch { logoutLocal() }
+})();
+</script>
+</body>
+</html>

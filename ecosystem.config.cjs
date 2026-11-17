@@ -9,8 +9,8 @@ module.exports = {
       NODE_ENV: 'production',
       TZ: 'Asia/Shanghai',
       // 伪装用的客户端版本；官方客户端升级后按 resources/package.json 同步
-      QWENWORK_CLIENT_VERSION: '1.3.2',
-      QWENWORK_RELEASE_VERSION: '1.3.2-26101704',
+      QWENWORK_CLIENT_VERSION: '2.1.0',
+      QWENWORK_RELEASE_VERSION: '2.1.0-26111315',
       REFRESH_MS: '600000'
     },
     autorestart: true,

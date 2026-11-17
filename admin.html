@@ -2,662 +2,844 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QwenWork2API · 控制台</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>QwenWork 控制台</title>
 <style>
-:root{
-  --bg:#efebe0; --panel:#fff; --panel2:#f5f2ea; --panel3:#e8e3d5;
-  --line:#ded7c5; --line2:#cdc6b1;
-  --fg:#1f1e1a; --dim:#615d55; --dim2:#8c8779;
-  --accent:#a14427; --accent-h:#8a3a20; --accent-soft:rgba(161,68,39,.09);
-  --ok:#497035; --ok-soft:rgba(73,112,53,.12);
-  --warn:#a0691c; --warn-soft:rgba(160,105,28,.13);
-  --bad:#b5473b; --bad-soft:rgba(181,71,59,.10);
-  --sh:0 1px 2px rgba(31,30,27,.05),0 6px 18px rgba(31,30,27,.055);
-  --sh2:0 6px 20px rgba(31,30,27,.09),0 22px 48px rgba(31,30,27,.09);
-  --r:14px;
-}
-@media (prefers-color-scheme: dark){
-  :root{ --bg:#1b1a17; --panel:#232220; --panel2:#2a2926; --panel3:#33322d;
-    --line:#3a3833; --line2:#4a4841; --fg:#f0ece2; --dim:#a8a294; --dim2:#7d786c;
-    --accent:#c96443; --accent-h:#d97b5b; --accent-soft:rgba(201,100,67,.16);
-    --ok:#7ea85f; --ok-soft:rgba(126,168,95,.16); --warn:#d6a04a; --warn-soft:rgba(214,160,74,.16);
-    --bad:#d9705f; --bad-soft:rgba(217,112,95,.16);
-    --sh:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
-    --sh2:0 6px 20px rgba(0,0,0,.4),0 22px 48px rgba(0,0,0,.4); }
-}
+:root{     --accent 3.90→6.23、--dim 4.48→5.35(bg)、--accent2 3.93→5.75、
+  --bg:#efebe0; --panel:#ffffff; --panel2:#e9e5d6; --panel3:#e0dbc9;
+  --line:#d5cfbc; --line-hover:#c5bfab;
+  --fg:#1f1e1b; --dim:#625f57; --dim-light:#87847a;
+  --accent:#a14427; --accent-hover:#8a3a20; --accent-soft:rgba(161,68,39,.09);
+  --accent-selected-bg:rgba(161,68,39,.14); --bad-selected-bg:rgba(181,71,59,.12);
+  --accent2:#497035; --accent2-soft:rgba(73,112,53,.12);
+  --warn:#a0691c; --warn-soft:rgba(183,121,31,.12);
+  --think:#7d5c8a; --think-soft:rgba(125,92,138,.10);
+  --bad:#b5473b; --bad-soft:rgba(181,71,59,.09);
+  --shadow-sm:0 1px 2px 0 rgba(31,30,27,.05);
+  --shadow:0 1px 2px 0 rgba(31,30,27,.05),0 4px 14px rgba(31,30,27,.04);
+  --shadow-md:0 2px 6px 0 rgba(31,30,27,.06),0 12px 32px rgba(31,30,27,.09);
+  --header-bg:rgba(239,235,224,.92);
+  --on-accent:#fff; --danger-bg:rgba(181,71,59,.14); --danger-border:rgba(181,71,59,.35);
+  --overlay-mask:rgba(15,23,42,.45); --terminal-bg:#16140f; --terminal-head:#1d1b15;
+  --terminal-border:#2b2820; --terminal-fg:#d6d3c9; --terminal-dim:#7c796f;
+  --terminal-error:#ef4444; --terminal-warn:#f59e0b; --terminal-ok:#10b981;
+  --chart-axis:#1e293b; --chart-text:#64748b; --chart-bar:#38bdf8; --chart-line:#a78bfa;
+  --summary-row-bg:rgba(37,99,235,.06); --toast-bad-bg:rgba(254,242,242,.98); --toast-warn-bg:rgba(255,251,235,.98);
+  --page-pad:clamp(14px,1.4vw,28px);
+  --serif:ui-serif, Georgia, "Source Han Serif SC", "Noto Serif SC", "Songti SC", serif;
+  --radius-card:12px; --radius-control:8px; --radius-pill:12px;}
 *{box-sizing:border-box}
-html,body{margin:0}
-body{background:var(--bg);color:var(--fg);font:13px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",PingFang SC,"Microsoft YaHei",sans-serif;
-  -webkit-font-smoothing:antialiased;overflow-y:scroll}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--fg);font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
 a{color:var(--accent);text-decoration:none}
-.wrap{max-width:1240px;margin:0 auto;padding:0 20px 56px}
+a:hover{text-decoration:underline}
 
-header{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--line)}
-.hbar{max-width:1240px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:10px;min-width:0}
-.mark{width:33px;height:33px;border-radius:10px;background:linear-gradient(145deg,var(--accent),#c4704f);
-  display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;box-shadow:var(--sh);flex:0 0 auto}
-.brand h1{font-size:16px;margin:0;font-weight:680;letter-spacing:.2px;white-space:nowrap}
-.brand .u{font-size:11px;color:var(--dim2)}
-.sp{flex:1}
-.live{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim);
-  border:1px solid var(--line);background:var(--panel);padding:4px 11px;border-radius:999px;font-weight:600;white-space:nowrap}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
-.live.run .dot{animation:pulse 1.6s infinite;background:var(--warn)}
-.live.err .dot{background:var(--bad)}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(160,105,28,.5)}70%{box-shadow:0 0 0 7px rgba(160,105,28,0)}100%{box-shadow:0 0 0 0 rgba(160,105,28,0)}}
-.btn{font:inherit;font-size:12px;font-weight:560;padding:6px 13px;border-radius:9px;border:1px solid var(--line);
-  background:var(--panel);color:var(--fg);cursor:pointer;transition:transform .12s,border-color .15s,color .15s,background .15s;white-space:nowrap}
-.btn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
-.btn:active{transform:translateY(0) scale(.985)}
-.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn.pri:hover{background:var(--accent-h);color:#fff}
-.btn.gho{background:transparent}
-.btn.dan{color:var(--bad);border-color:rgba(181,71,59,.38)}
-.btn.dan:hover{background:var(--bad-soft);color:var(--bad);border-color:var(--bad)}
-.btn.sm{padding:3px 9px;font-size:11.5px;border-radius:8px}
-.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
-.btn svg{width:14px;height:14px;vertical-align:-2px;fill:currentColor}
+/* ---------- 外壳 ---------- */
+.console-shell{display:grid;grid-template-columns:216px minmax(0,1fr);min-height:100vh}
+.console-sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto}
+.console-nav-head{display:flex;align-items:center;gap:8px;padding:16px 16px 13px;border-bottom:1px solid var(--line)}
+.console-mark{width:24px;height:24px;border-radius:6px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none}
+.console-wordmark{font-size:14px;font-weight:650;letter-spacing:.01em}
+.console-nav-group{padding:12px 8px 0}
+.console-nav-caption{padding:0 8px 6px;font-size:11px;color:var(--dim-light);letter-spacing:.06em}
+.console-nav-link{position:relative;display:flex;align-items:center;width:100%;height:34px;padding:0 12px;border:0;border-radius:6px;background:transparent;color:var(--dim);font:inherit;font-size:13px;text-align:left;cursor:pointer;transition:background .15s,color .15s}
+.console-nav-link:hover{background:var(--panel2);color:var(--fg)}
+.console-nav-link.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.console-nav-link.active::after{content:"";position:absolute;left:0;top:7px;bottom:7px;width:2px;background:var(--accent);border-radius:0 2px 2px 0}
+.console-sidebar-foot{display:flex;align-items:center;gap:6px;margin:auto 16px 14px;padding-top:12px;border-top:1px solid var(--line);color:var(--dim);font-size:11px}
+.console-side-dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);flex:none}
+.console-side-dot.bad{background:var(--bad)}
 
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(198px,1fr));gap:13px;margin:18px 0 16px}
-.kpi{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
-  padding:13px 17px;box-shadow:var(--sh);overflow:hidden;transition:transform .18s,box-shadow .18s}
-.kpi:hover{transform:translateY(-2px);box-shadow:var(--sh2)}
-.kpi:before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--accent)}
-.kpi.g:before{background:var(--ok)} .kpi.w:before{background:var(--warn)} .kpi.b:before{background:var(--bad)}
-.kpi .lab{font-size:11.5px;color:var(--dim);font-weight:620}
-.kpi .num{font-size:26px;font-weight:720;letter-spacing:-.6px;margin-top:1px;font-variant-numeric:tabular-nums}
-.kpi .sub{font-size:11px;color:var(--dim2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.console-main{min-width:0;display:flex;flex-direction:column}
+.console-contextbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;height:52px;padding:0 var(--page-pad);background:var(--header-bg);border-bottom:1px solid var(--line);font-size:12px;color:var(--dim)}
+.console-product{font-weight:600;color:var(--fg)}
+.console-context-sep{width:1px;height:14px;background:var(--line)}
+.console-context-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.wrap{width:100%;max-width:1320px;margin:0 auto;padding:18px var(--page-pad) 48px}
 
-.grid{display:grid;gap:15px;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));align-items:start}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 18px;box-shadow:var(--sh);min-width:0}
-.card>h2{font-size:13px;margin:0 0 13px;font-weight:660;display:flex;align-items:center;gap:8px;min-height:24px;flex-wrap:wrap}
-.card>h2 .tag{font-size:11px;color:var(--dim2);font-weight:400}
-.card>h2 .right{margin-left:auto;display:flex;gap:7px;align-items:center}
-.full{grid-column:1/-1}
+/* ---------- 页头 ---------- */
+.pagehead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:2px 0 14px}
+.pagetitle{margin:0;font-size:19px;font-weight:650;letter-spacing:-.01em}
+.pagesub{margin-left:8px;font-size:12px;font-weight:400;color:var(--dim-light)}
 
-.chart{position:relative;display:flex;align-items:flex-end;gap:3px;height:132px;padding:6px 0 0}
-.chart .col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;min-width:0;position:relative}
-.chart .stack{width:100%;max-width:24px;display:flex;flex-direction:column;justify-content:flex-end;height:100%;border-radius:5px 5px 2px 2px;overflow:hidden}
-.chart .ok{background:linear-gradient(180deg,var(--accent),#c0795c);transition:height .45s cubic-bezier(.2,.7,.3,1)}
-.chart .bad{background:linear-gradient(180deg,var(--bad),#cf8b80);transition:height .45s cubic-bezier(.2,.7,.3,1)}
-.chart .zero{background:var(--panel3);border-radius:3px;height:3px!important;width:100%;max-width:24px}
-.chart .col:hover .stack{filter:brightness(1.12)}
-.chart .xl{position:absolute;bottom:-17px;font-size:9.5px;color:var(--dim2);white-space:nowrap}
-.chartwrap{padding-bottom:18px}
-.legend{display:flex;gap:13px;font-size:11px;color:var(--dim);flex-wrap:wrap;align-items:center}
-.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
-.tip{position:fixed;z-index:80;pointer-events:none;opacity:0;transform:translate(-50%,-100%) scale(.96);
-  transition:opacity .12s,transform .12s;background:var(--fg);color:var(--bg);font-size:11.5px;font-weight:560;
-  padding:6px 10px;border-radius:8px;white-space:nowrap;box-shadow:var(--sh2)}
-.tip.on{opacity:1;transform:translate(-50%,-100%) scale(1)}
+/* ---------- KPI ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.kpi{position:relative;overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px 13px;box-shadow:var(--shadow-sm)}
+.kpi .accentbar{position:absolute;left:0;top:0;bottom:0;width:3px}
+.kpi .k{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim)}
+.kpi .ic{font-size:10px;color:var(--accent)}
+.kpi .v{margin-top:6px;font-size:26px;font-weight:650;line-height:1.15;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kpi .s{margin-top:3px;font-size:11.5px;color:var(--dim-light)}
 
-.dis{display:flex;flex-direction:column;gap:8px}
-.dis .row{display:flex;align-items:center;gap:9px;font-size:12px}
-.dis .nm{flex:0 0 auto;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dim)}
-.dis .tr{flex:1;height:7px;background:var(--panel3);border-radius:99px;overflow:hidden}
-.dis .tr>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--ok),#77a457);transition:width .5s cubic-bezier(.2,.7,.3,1)}
-.dis .tr>i.hot{background:linear-gradient(90deg,var(--accent),#c0795c)}
-.dis .v{flex:0 0 52px;text-align:right;color:var(--dim);font-variant-numeric:tabular-nums;font-size:11.5px}
+/* ---------- 卡片 ---------- */
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:var(--shadow-sm)}
+.card .k{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600}
+.card .k .ic{font-size:10px;color:var(--accent)}
+.card .s{margin-top:2px;font-size:11.5px;color:var(--dim-light)}
+.legend{display:flex;gap:12px;font-size:11.5px;color:var(--dim)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
 
-.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:10px}
-.mcard{border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:var(--panel2);min-width:0;
-  transition:border-color .15s,transform .15s,box-shadow .15s}
-.mcard:hover{border-color:var(--line2);transform:translateY(-1px);box-shadow:var(--sh)}
-.mcard .id{font-family:ui-monospace,Consolas,monospace;font-size:12px;font-weight:650;display:flex;align-items:center;gap:6px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mcard .id .st{width:6px;height:6px;border-radius:50%;background:var(--panel3);flex:0 0 auto}
-.mcard .id .st.on{background:var(--ok)} .mcard .id .st.err{background:var(--bad)}
-.mcard .meta{color:var(--dim2);font-size:11px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mcard .foot{display:flex;align-items:center;gap:6px;margin-top:9px}
-.mcard .n{font-variant-numeric:tabular-nums;font-weight:640;font-size:12px}
-.mcard .ms{color:var(--dim2);font-size:11px}
+/* ---------- 表格 ---------- */
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{position:sticky;top:0;background:var(--panel);text-align:left;font-weight:600;font-size:11.5px;color:var(--dim);padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:0}
 
-.acct{border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:9px;transition:border-color .15s}
-.acct:hover{border-color:var(--line2)}
-.acct .t{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-.acct .mail{font-weight:650;font-size:12.5px;word-break:break-all;line-height:1.35}
-.acct .ms{color:var(--dim2);font-size:11px;margin-top:3px}
-.pl{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:650;
-  background:var(--panel3);color:var(--dim);white-space:nowrap;flex:0 0 auto;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.pl.ok{background:var(--ok-soft);color:var(--ok)} .pl.warn{background:var(--warn-soft);color:var(--warn)}
-.pl.bad{background:var(--bad-soft);color:var(--bad)} .pl.acc{background:var(--accent-soft);color:var(--accent)}
-.qbar{height:5px;border-radius:99px;background:var(--panel3);overflow:hidden;margin-top:9px}
-.qbar>i{display:block;height:100%;border-radius:99px;background:var(--ok);transition:width .5s}
-.qbar>i.low{background:var(--warn)} .qbar>i.empty{background:var(--bad)}
-.ops{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
+/* ---------- 控件 ---------- */
+.btn{height:30px;padding:0 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg);font:inherit;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:background .15s,border-color .15s;text-decoration:none}
+.btn:hover{background:var(--panel2);border-color:var(--line-hover);text-decoration:none}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:var(--panel2);color:var(--dim);font-size:11.5px;white-space:nowrap}
+.pill.ok{background:var(--accent2-soft);color:var(--accent2)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.badge{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;background:var(--panel2);color:var(--dim);font-size:11px;white-space:nowrap}
+.badge.ok{background:var(--accent2-soft);color:var(--accent2)}
+.badge.bad{background:var(--bad-soft);color:var(--bad)}
+.seg{display:inline-flex;gap:2px;padding:2px;background:var(--panel2);border-radius:8px}
+.seg button{height:26px;padding:0 11px;border:0;border-radius:6px;background:transparent;color:var(--dim);font:inherit;font-size:12px;cursor:pointer}
+.seg button.on{background:var(--panel);color:var(--fg);font-weight:600;box-shadow:var(--shadow-sm)}
+.empty{padding:26px 8px;text-align:center;color:var(--dim-light);font-size:12.5px;line-height:1.9}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.dim{color:var(--dim-light)}
+.bad{color:var(--bad)}
+.console-view-hidden{display:none!important}
+.rowflex{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.spread{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.stack{display:grid;gap:11px}
+.kv{display:flex;gap:6px;font-size:12px;color:var(--dim)}
+.kv b{color:var(--fg);font-weight:600}
 
-.krow{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
-.krow:last-child{border-bottom:none}
-.krow .nm{font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:28%}
-.krow .val{flex:1;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--dim);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.newkey{display:flex;gap:7px;margin-top:11px}
-input,select,textarea{font:inherit;font-size:12px;padding:6px 10px;border-radius:9px;border:1px solid var(--line);
-  background:var(--panel);color:var(--fg);width:100%;transition:border-color .15s,box-shadow .15s}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-textarea{resize:vertical;min-height:58px}
+/* ---------- 图表与进度条 ---------- */
+.bars{display:flex;align-items:flex-end;gap:2px;height:132px;margin-top:14px}
+.bars .b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:1px;min-width:0}
+.bars .b i{display:block;border-radius:2px 2px 0 0;background:var(--accent);opacity:.85;transition:height .45s cubic-bezier(.22,.61,.36,1)}
+.bars .b i.e{background:var(--bad);opacity:.9}
+.bars .b:hover i{opacity:1}
+.xaxis{display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:var(--dim-light)}
+.quota{height:6px;border-radius:99px;background:var(--panel3);overflow:hidden;margin-top:9px}
+.quota>i{display:block;height:100%;border-radius:99px;background:var(--accent2);transition:width .5s}
+.quota.mid>i{background:var(--warn)}
+.quota.low>i{background:var(--bad)}
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--terminal-bg);color:var(--terminal-fg);padding:9px 16px;border-radius:8px;font-size:12.5px;z-index:99;box-shadow:var(--shadow-md)}
 
-.tw{overflow:auto;border:1px solid var(--line);border-radius:11px;max-height:420px}
-table{width:100%;border-collapse:separate;border-spacing:0;font-size:11.8px}
-th,td{text-align:left;padding:7px 10px;white-space:nowrap;border-bottom:1px solid var(--line)}
-th{position:sticky;top:0;background:var(--panel2);z-index:2;font-weight:640;color:var(--dim);font-size:11px}
-tbody tr:last-child td{border-bottom:none}
-tbody tr:hover td{background:var(--panel2)}
-td.wrap{white-space:normal;max-width:230px;word-break:break-all}
-.mono{font-family:ui-monospace,Consolas,monospace;font-size:11px}
-
-.chips{display:flex;gap:6px;flex-wrap:wrap}
-.chip{font:inherit;font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:999px;border:1px solid var(--line);
-  background:var(--panel);color:var(--dim);cursor:pointer;transition:.15s}
-.chip:hover{border-color:var(--line2);color:var(--fg)}
-.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.empty{color:var(--dim2);font-size:12px;padding:16px 0;text-align:center}
-.hint{color:var(--dim2);font-size:11px;margin-top:9px;line-height:1.55}
-.rowline{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--line)}
-.rowline:last-child{border-bottom:none}
-.rowline .k{color:var(--dim);flex:0 0 auto;white-space:nowrap}
-.rowline .v{text-align:right;min-width:0;word-break:break-all;font-variant-numeric:tabular-nums}
-.rowline .v.mono{font-size:11px}
-.skel{background:linear-gradient(90deg,var(--panel3) 25%,var(--panel2) 37%,var(--panel3) 63%);
-  background-size:400% 100%;animation:sk 1.4s ease infinite;border-radius:6px;height:12px}
-@keyframes sk{0%{background-position:100% 0}100%{background-position:0 0}}
-.auth{display:none;margin-top:11px;padding:12px;border:1px dashed var(--line2);border-radius:10px;background:var(--panel2)}
-.auth.on{display:block}
-.auth .u{word-break:break-all;font-size:11px;font-family:ui-monospace,Consolas,monospace}
-footer{display:flex;gap:12px;flex-wrap:wrap;align-items:center;color:var(--dim2);font-size:11.5px;
-  border-top:1px solid var(--line);margin-top:26px;padding-top:14px}
-footer .sp{flex:1}
-#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);z-index:100;background:var(--fg);color:var(--bg);
-  font-size:12px;font-weight:560;padding:9px 18px;border-radius:10px;box-shadow:var(--sh2);opacity:0;
-  transition:opacity .2s,transform .2s;pointer-events:none;max-width:82vw;text-align:center}
-#toast.on{opacity:1;transform:translate(-50%,0)}
-.mask{position:fixed;inset:0;z-index:90;background:rgba(20,19,17,.42);display:none;
-  align-items:center;justify-content:center;padding:20px}
-.mask.on{display:flex}
-.modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh2);
-  padding:20px 22px;max-width:420px;width:100%}
-.modal h3{margin:0 0 8px;font-size:14.5px}
-.modal p{margin:0 0 16px;color:var(--dim);font-size:12.5px;line-height:1.6}
-.modal .acts{display:flex;gap:9px;justify-content:flex-end}
-pre.out{margin:10px 0 0;padding:10px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
-  font-size:11.5px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto;font-family:ui-monospace,Consolas,monospace}
-@media (max-width:760px){
-  .wrap{padding:0 13px 44px} .hbar{padding:9px 13px}
-  .kpi .num{font-size:22px} .grid{grid-template-columns:1fr}
-  .brand h1{font-size:15px} footer{font-size:11px}
-  .krow .nm{max-width:22%}
+@media (max-width:1180px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cards{grid-template-columns:1fr}
 }
+@media (max-width:760px){
+  .console-shell{grid-template-columns:1fr}
+  .console-sidebar{display:none}
+  .wrap{padding:12px}
+}
+</style>
+<style></style>
+<style>
+/* 本站补充：图表条、配额条、弹窗、登录页 */
+.bars{display:flex;align-items:flex-end;gap:2px;height:130px;margin-top:14px}
+.bars .b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:1px;min-width:0}
+.bars .b i{display:block;border-radius:2px 2px 0 0;background:var(--accent);opacity:.85;transition:height .45s cubic-bezier(.22,.61,.36,1)}
+.bars .b i.e{background:var(--bad);opacity:.9}
+.bars .b:hover i{opacity:1}
+.xaxis{display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:var(--dim-light)}
+.quota{height:6px;border-radius:99px;background:var(--panel3);overflow:hidden;margin-top:9px}
+.quota>i{display:block;height:100%;border-radius:99px;background:var(--accent2);transition:width .5s}
+.quota.mid>i{background:var(--warn)}
+.quota.low>i{background:var(--bad)}
+.rowflex{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.spread{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.stack{display:grid;gap:11px}
+.kv{display:flex;gap:6px;font-size:12px;color:var(--dim);flex-wrap:wrap}
+.kv b{color:var(--fg);font-weight:600}
+.tbl-scroll{max-height:540px;overflow:auto}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.input{height:32px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);font:inherit;font-size:13px;color:var(--fg);outline:none}
+.input:focus{border-color:var(--accent);background:var(--panel)}
+.modal-mask{position:fixed;inset:0;background:rgba(31,30,27,.42);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-md);width:520px;max-width:100%;padding:20px}
+.modal h3{margin:0 0 4px;font-size:15px;font-weight:650}
+.modal .sub{font-size:12px;color:var(--dim-light);line-height:1.7}
+.linkbox{display:flex;gap:6px;margin-top:12px}
+.linkbox input{flex:1;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot.ok{background:var(--accent2)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+.gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#efebe0;z-index:200}
+body.gated .console-shell{visibility:hidden}
+.gate .box{width:340px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;box-shadow:var(--shadow)}
+.gate h1{margin:0 0 4px;font-size:17px;font-weight:650}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn.danger{color:var(--bad);border-color:var(--line)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--terminal-bg);color:var(--terminal-fg);
+  padding:9px 16px;border-radius:8px;font-size:12.5px;z-index:99;box-shadow:var(--shadow-md);display:none}
+.spinner{width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-<header>
-  <div class="hbar">
-    <div class="brand">
-      <div class="mark">QW</div>
-      <div>
-        <h1>QwenWork2API</h1>
-        <div class="u" id="ver-line">千问办公 → OpenAI 兼容网关</div>
+
+<div class="console-shell">
+  <aside class="console-sidebar">
+    <div class="console-nav-head">
+      <div class="console-mark">QW</div>
+      <div class="console-wordmark">QwenWork</div>
+    </div>
+    <div class="console-nav-group">
+      <div class="console-nav-caption">监控</div>
+      <button class="console-nav-link active" data-view="dash">数据看板</button>
+      <button class="console-nav-link" data-view="usage">用量分析</button>
+      <button class="console-nav-link" data-view="logs">调用日志</button>
+    </div>
+    <div class="console-nav-group">
+      <div class="console-nav-caption">资源</div>
+      <button class="console-nav-link" data-view="accounts">账号</button>
+      <button class="console-nav-link" data-view="keys">密钥</button>
+    </div>
+    <div class="console-nav-group">
+      <div class="console-nav-caption">系统</div>
+      <button class="console-nav-link" data-view="settings">设置</button>
+    </div>
+    <div class="console-sidebar-foot">
+      <span class="console-side-dot" id="sideDot"></span>
+      <span id="sideState">连接中</span>
+      <span class="mono" id="sideVer" style="margin-left:auto"></span>
+    </div>
+  </aside>
+
+  <div class="console-main">
+    <div class="console-contextbar">
+      <span class="console-product">qwenwork2api</span>
+      <span class="console-context-sep"></span>
+      <span class="console-service mono" id="ctxPort">:4021</span>
+      <span class="console-context-sep"></span>
+      <span id="ctxUpdate" class="dim">—</span>
+      <div class="console-context-actions">
+        <span class="pill" id="ctxPill">—</span>
+        <button class="btn" id="btnRefresh">刷新</button>
+        <a class="btn" href="https://github.com/jianhx189/qwenwork2api" target="_blank" rel="noopener">GitHub</a>
       </div>
     </div>
-    <div class="sp"></div>
-    <span class="live" id="live"><i class="dot"></i><span id="live-t">连接中…</span></span>
-    <button class="btn gho" id="btn-refresh" title="刷新（R）">
-      <svg viewBox="0 0 24 24"><path d="M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg> 刷新
-    </button>
-    <button class="btn pri" id="btn-add">添加账号</button>
-    <a class="btn gho" href="https://github.com/jianhx189/qwenwork2api" target="_blank" rel="noreferrer">
-      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A7.995 7.995 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-      GitHub
-    </a>
-  </div>
-</header>
 
-<div class="wrap">
-  <div class="kpis">
-    <div class="kpi"><div class="lab">今日调用</div><div class="num" id="k-today">—</div><div class="sub" id="k-today-s">—</div></div>
-    <div class="kpi g"><div class="lab">成功率</div><div class="num" id="k-rate">—</div><div class="sub" id="k-rate-s">—</div></div>
-    <div class="kpi w"><div class="lab">平均耗时</div><div class="num" id="k-ms">—</div><div class="sub" id="k-ms-s">—</div></div>
-    <div class="kpi"><div class="lab">剩余积分</div><div class="num" id="k-quota">—</div><div class="sub" id="k-quota-s">—</div></div>
-    <div class="kpi g"><div class="lab">可用账号</div><div class="num" id="k-acct">—</div><div class="sub" id="k-acct-s">—</div></div>
-  </div>
-
-  <div class="grid">
-    <section class="card full">
-      <h2>近 24 小时调用 <span class="tag" id="chart-tag"></span>
-        <span class="right"><span class="legend"><span><i style="background:var(--accent)"></i>成功</span><span><i style="background:var(--bad)"></i>失败</span></span></span>
-      </h2>
-      <div class="chartwrap"><div class="chart" id="chart"><div class="skel" style="width:100%;height:100%"></div></div></div>
-    </section>
-
-    <section class="card">
-      <h2>模型分布 <span class="tag">累计调用</span></h2>
-      <div class="dis" id="by-model"><div class="skel" style="width:70%"></div></div>
-    </section>
-
-    <section class="card">
-      <h2>账号分布 <span class="tag">累计调用</span></h2>
-      <div class="dis" id="by-account"><div class="skel" style="width:55%"></div></div>
-    </section>
-
-    <section class="card full">
-      <h2>模型目录 <span class="tag" id="model-tag"></span>
-        <span class="right"><button class="btn sm gho" id="btn-test-all">全部试跑</button></span>
-      </h2>
-      <div class="mgrid" id="models"><div class="skel" style="height:64px"></div></div>
-      <div id="test-out"></div>
-      <div class="hint">「试跑」会在服务端真实发一条请求，返回耗时和正文；用来确认某个档位当前能不能出字。</div>
-    </section>
-
-    <section class="card">
-      <h2>账号 <span class="tag" id="acct-tag"></span></h2>
-      <div id="accounts"><div class="skel" style="height:60px"></div></div>
-      <div class="auth" id="auth-box">
-        <div style="font-weight:620;margin-bottom:6px">在浏览器打开下面的链接完成授权</div>
-        <a class="u" id="auth-url" href="#" target="_blank" rel="noreferrer"></a>
-        <div class="hint" id="auth-status">等待授权…</div>
-        <div class="ops"><button class="btn sm gho" id="btn-cancel-auth">取消</button></div>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>调用令牌 <span class="tag" id="key-tag"></span>
-        <span class="right"><button class="btn sm gho" id="btn-copy-base">复制 Base URL</button></span>
-      </h2>
-      <div id="keys"><div class="skel" style="height:40px"></div></div>
-      <div class="newkey"><input id="new-key-name" placeholder="新令牌备注，例如 dsh / chatbox"><button class="btn pri" id="btn-new-key">新建</button></div>
-      <div class="hint">Base URL：<code class="mono" id="base-url">…</code></div>
-    </section>
-
-    <section class="card full">
-      <h2>调用日志 <span class="tag" id="log-tag"></span>
-        <span class="right"><span class="chips" id="log-chips">
-          <button class="chip on" data-f="all">全部</button>
-          <button class="chip" data-f="ok">成功</button>
-          <button class="chip" data-f="err">失败</button>
-          <button class="chip" data-f="retry">重试</button>
-        </span></span>
-      </h2>
-      <div class="tw"><table>
-        <thead><tr><th>时间</th><th>类型</th><th>令牌</th><th>账号</th><th>模型</th><th>流式</th><th>耗时</th><th>状态</th></tr></thead>
-        <tbody id="logs"><tr><td colspan="8" class="empty">加载中…</td></tr></tbody>
-      </table></div>
-    </section>
-
-    <section class="card full">
-      <h2>运行信息</h2>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 26px">
-        <div>
-          <div class="rowline"><span class="k">签名组件</span><span class="v mono" id="s-wasm">—</span></div>
-          <div class="rowline"><span class="k">客户端版本</span><span class="v mono" id="s-ver">—</span></div>
-          <div class="rowline"><span class="k">累计调用</span><span class="v" id="s-req">—</span></div>
+    <div class="wrap">
+      <!-- ============ 数据看板 ============ -->
+      <section class="console-view" id="view-dash">
+        <div class="pagehead"><h1 class="pagetitle">数据看板 <span class="pagesub" id="pageSub">—</span></h1></div>
+        <div class="kpis">
+          <div class="kpi big"><div class="accentbar" style="background:var(--accent)"></div>
+            <div class="k"><span class="ic">◆</span>今日调用</div>
+            <div class="v" id="kToday">—</div><div class="s" id="kTodaySub">—</div></div>
+          <div class="kpi big"><div class="accentbar" style="background:var(--accent2)"></div>
+            <div class="k"><span class="ic">✓</span>成功率</div>
+            <div class="v" id="kSuccess">—</div><div class="s" id="kSuccessSub">—</div></div>
+          <div class="kpi big"><div class="accentbar" style="background:var(--warn)"></div>
+            <div class="k"><span class="ic">⏱</span>平均耗时</div>
+            <div class="v" id="kLatency">—</div><div class="s" id="kLatencySub">—</div></div>
+          <div class="kpi big"><div class="accentbar" style="background:var(--think)"></div>
+            <div class="k"><span class="ic">◈</span>剩余积分</div>
+            <div class="v" id="kQuota">—</div><div class="s" id="kQuotaSub">—</div></div>
         </div>
-        <div>
-          <div class="rowline"><span class="k">Base URL</span><span class="v mono" id="s-base">—</span></div>
-          <div class="rowline"><span class="k">模型数</span><span class="v" id="s-models">—</span></div>
-          <div class="rowline"><span class="k">最后更新</span><span class="v" id="s-up">—</span></div>
+        <div class="cards">
+          <div class="card" style="grid-column:span 2">
+            <div class="spread">
+              <div><div class="k" style="margin:0"><span class="ic">▤</span>近 24 小时调用</div><div class="s" id="chartSub">—</div></div>
+              <div class="legend"><span><i style="background:var(--accent)"></i>成功</span><span><i style="background:var(--bad)"></i>失败</span></div>
+            </div>
+            <div class="bars" id="chart"></div>
+            <div class="xaxis" id="xaxis"></div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">◔</span>模型分布</div><div class="s">今日按模型</div>
+            <div class="stack" id="modelDist" style="margin-top:12px"></div>
+          </div>
         </div>
-      </div>
-    </section>
-  </div>
+        <div class="cards">
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">◈</span>账号</div><div class="s">积分与状态</div>
+            <div class="stack" id="acctMini" style="margin-top:12px"></div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">⌁</span>账号调用量</div><div class="s">今日按账号</div>
+            <div class="stack" id="acctDist" style="margin-top:12px"></div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">▦</span>最近调用</div><div class="s">最新 6 条</div>
+            <div class="stack" id="recentLogs" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </section>
 
-  <footer>
-    <span>© 2026 <strong>jianhx</strong></span>
-    <a href="https://github.com/jianhx189/qwenwork2api" target="_blank" rel="noreferrer">github.com/jianhx189/qwenwork2api</a>
-    <div class="sp"></div>
-    <span>协议层基于 qwenwork-magpie（MIT）· 服务与看板由 jianhx 编写</span>
-  </footer>
+      <!-- ============ 用量分析 ============ -->
+      <section class="console-view console-view-hidden" id="view-usage">
+        <div class="pagehead">
+          <h1 class="pagetitle">用量分析 <span class="pagesub" id="usageSub">—</span></h1>
+          <div class="seg" id="usageSeg">
+            <button data-d="7" class="on">近 7 天</button><button data-d="14">近 14 天</button><button data-d="30">近 30 天</button>
+          </div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="k"><span class="ic">◆</span>请求总数</div><div class="v" id="uTotal">—</div><div class="s" id="uTotalSub">—</div></div>
+          <div class="kpi"><div class="k"><span class="ic">✓</span>失败</div><div class="v" id="uErr">—</div><div class="s" id="uErrSub">—</div></div>
+          <div class="kpi"><div class="k"><span class="ic">⏱</span>平均耗时</div><div class="v" id="uAvg">—</div><div class="s">全窗口</div></div>
+          <div class="kpi"><div class="k"><span class="ic">◈</span>Token 量</div><div class="v" id="uTokens">—</div><div class="s">按日志 tokens 字段</div></div>
+        </div>
+        <div class="cards">
+          <div class="card" style="grid-column:span 2">
+            <div class="k" style="margin:0"><span class="ic">▤</span>每日趋势</div><div class="s">成功与失败堆叠</div>
+            <div class="bars" id="usageBars"></div><div class="xaxis" id="usageX"></div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">◔</span>按模型</div><div class="s">请求数与失败</div>
+            <div class="table-wrap tbl-scroll" style="margin-top:10px;max-height:260px">
+              <table><thead><tr><th>模型</th><th class="num">请求</th><th class="num">失败</th><th class="num">Token</th></tr></thead><tbody id="usageModel"></tbody></table>
+            </div>
+          </div>
+        </div>
+        <div class="cards">
+          <div class="card" style="grid-column:span 2">
+            <div class="k" style="margin:0"><span class="ic">▦</span>按天明细</div>
+            <div class="table-wrap tbl-scroll" style="margin-top:10px">
+              <table><thead><tr><th>日期</th><th class="num">请求</th><th class="num">失败</th><th class="num">Token</th><th class="num">平均耗时</th></tr></thead><tbody id="usageDay"></tbody></table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">⚿</span>按密钥</div><div class="s">谁在用</div>
+            <div class="table-wrap tbl-scroll" style="margin-top:10px;max-height:260px">
+              <table><thead><tr><th>密钥</th><th class="num">请求</th><th class="num">失败</th></tr></thead><tbody id="usageKey"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 账号 ============ -->
+      <section class="console-view console-view-hidden" id="view-accounts">
+        <div class="pagehead">
+          <h1 class="pagetitle">账号 <span class="pagesub" id="acctSub">—</span></h1>
+          <div class="rowflex">
+            <button class="btn" id="btnBulkRefresh">全部刷新余额</button>
+            <button class="btn" id="btnBulkClaim">全部领取积分</button>
+            <button class="btn primary" id="btnAddAccount">添加账号</button>
+          </div>
+        </div>
+        <div class="cards" id="acctCards"></div>
+      </section>
+
+      <!-- ============ 密钥 ============ -->
+      <section class="console-view console-view-hidden" id="view-keys">
+        <div class="pagehead">
+          <h1 class="pagetitle">密钥 <span class="pagesub">OpenAI 兼容调用凭据</span></h1>
+          <div class="rowflex"><button class="btn primary" id="btnAddKey">新建令牌</button></div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table><thead><tr><th>名称</th><th>密钥</th><th class="num">调用</th><th>状态</th><th class="num">操作</th></tr></thead>
+            <tbody id="keyRows"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 日志 ============ -->
+      <section class="console-view console-view-hidden" id="view-logs">
+        <div class="pagehead">
+          <h1 class="pagetitle">调用日志 <span class="pagesub" id="logSub">—</span></h1>
+          <div class="rowflex">
+            <input class="input" id="logSearch" placeholder="搜模型 / 账号 / 密钥" style="width:200px">
+            <div class="seg" id="logSeg">
+              <button data-f="all" class="on">全部</button><button data-f="ok">成功</button><button data-f="err">失败</button><button data-f="sys">系统</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap tbl-scroll">
+            <table><thead><tr><th>时间</th><th>类型</th><th>模型</th><th>账号</th><th class="num">耗时</th><th>详情</th></tr></thead>
+            <tbody id="logRows"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 设置 ============ -->
+      <section class="console-view console-view-hidden" id="view-settings">
+        <div class="pagehead"><h1 class="pagetitle">设置</h1></div>
+        <div class="cards">
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">⚿</span>面板密码</div>
+            <div class="s">改完立即生效，当前会话保持登录</div>
+            <div class="stack" style="margin-top:14px">
+              <input class="input" id="pwCur" type="password" placeholder="当前密码">
+              <input class="input" id="pwNew" type="password" placeholder="新密码（至少 6 位）">
+              <input class="input" id="pwNew2" type="password" placeholder="再输一次">
+              <button class="btn primary" id="btnPw" style="justify-content:center">修改密码</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">◈</span>每日免费积分</div>
+            <div class="s">千问办公的每日领取，每天每账号一次</div>
+            <div class="spread" style="margin-top:16px">
+              <span id="claimState">—</span>
+              <button class="btn" id="btnClaimToggle">切换</button>
+            </div>
+            <div class="kv" style="margin-top:12px">领取接口 <b class="mono">daily.gateway.qwenwork.cn</b></div>
+          </div>
+          <div class="card">
+            <div class="k" style="margin:0"><span class="ic">▦</span>运行信息</div>
+            <div class="stack" style="margin-top:12px">
+              <div class="kv">服务 <b>qwenwork2api</b> · 端口 <b id="setPort">—</b></div>
+              <div class="kv">客户端伪装版本 <b id="setVer">—</b></div>
+              <div class="kv">WASM 签名组件 <b id="setWasm">—</b></div>
+              <div class="rowflex" style="margin-top:8px"><button class="btn" id="btnLogout">退出登录</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
 </div>
 
-<div class="tip" id="tip"></div>
-<div id="toast"></div>
-<div class="mask" id="mask"><div class="modal">
-  <h3 id="m-title">确认</h3><p id="m-text"></p>
-  <div class="acts"><button class="btn gho" id="m-no">取消</button><button class="btn dan" id="m-yes">确认</button></div>
-</div></div>
+<!-- ============ 登录 ============ -->
+<div class="gate" id="gate" style="display:none;background:#efebe0;z-index:200">
+  <div class="box">
+    <h1>QwenWork 控制台</h1>
+    <div class="sub">输入面板密码进入。</div>
+    <div class="stack" style="margin-top:16px">
+      <input class="input" id="pwInput" type="password" placeholder="面板密码" autocomplete="current-password">
+      <button class="btn primary" id="pwBtn" style="justify-content:center;height:34px">登录</button>
+      <div class="s" id="pwErr" style="color:var(--bad);min-height:16px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 添加账号弹窗 ============ -->
+<div class="modal-mask" id="addMask" style="display:none">
+  <div class="modal">
+    <h3>添加千问办公账号</h3>
+    <div class="sub">用浏览器打开下面的授权链接，确认授权后这里会自动出现账号。链接 5 分钟内有效。</div>
+    <div class="linkbox">
+      <input id="authUrl" readonly placeholder="正在生成…">
+      <button class="btn" id="btnCopyUrl">复制</button>
+      <a class="btn" id="btnOpenUrl" target="_blank" rel="noopener">打开</a>
+    </div>
+    <div class="kv" style="margin-top:12px"><span class="dot warn" id="pollDot"></span><span id="pollMsg">等待授权…</span></div>
+    <div class="rowflex" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn" id="btnReauth">重新生成</button>
+      <button class="btn" id="btnCloseAdd">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
-'use strict'
-const TOKEN = new URLSearchParams(location.search).get('token') || localStorage.getItem('qw_admin_token') || ''
-if (TOKEN) localStorage.setItem('qw_admin_token', TOKEN)
-if (location.search.includes('token=')) history.replaceState(null, '', location.pathname)
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf = n => (n ?? 0).toLocaleString('en-US');
+const ms = v => !v ? '—' : v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 's' : Math.round(v) + 'ms';
+const pct = v => (v * 100).toFixed(v > 0.995 ? 1 : 2) + '%';
+const hhmm = t => new Date(t).toTimeString().slice(0, 5);
+const ago = t => { const d = (Date.now() - t) / 1000; if (d < 60) return Math.round(d) + ' 秒前'; if (d < 3600) return Math.round(d / 60) + ' 分钟前'; if (d < 86400) return Math.round(d / 3600) + ' 小时前'; return Math.round(d / 86400) + ' 天前' };
 
-const $ = s => document.querySelector(s)
-const $$ = s => [...document.querySelectorAll(s)]
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-const fmt = n => typeof n === 'number' && isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'
-const secs = ms => !ms ? '—' : ms < 1000 ? ms + 'ms' : (ms / 1000).toFixed(ms < 10000 ? 1 : 0) + 's'
-const ago = ts => {
-  if (!ts) return '—'
-  const s = (Date.now() - ts) / 1000
-  if (s < 60) return Math.max(1, Math.floor(s)) + ' 秒前'
-  if (s < 3600) return Math.floor(s / 60) + ' 分钟前'
-  if (s < 86400) return Math.floor(s / 3600) + ' 小时前'
-  return Math.floor(s / 86400) + ' 天前'
-}
+const S = { token: localStorage.getItem('qw_token') || '', stats: null, state: null, logs: [], usage: null, view: 'dash', filter: 'all', q: '', usageDays: 7, updated: 0, settings: null };
 
-let toastT
-function toast(msg) {
-  const t = $('#toast'); t.textContent = msg; t.classList.add('on')
-  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2200)
-}
-function copyText(t) {
-  try { if (window.isSecureContext && navigator.clipboard) { navigator.clipboard.writeText(t).catch(() => {}); return true } } catch {}
-  try {
-    const ta = document.createElement('textarea'); ta.value = t
-    ta.style.cssText = 'position:fixed;top:-9999px'; document.body.appendChild(ta)
-    ta.focus(); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok
-  } catch { return false }
-}
-function confirmBox(title, text, okText) {
-  return new Promise(resolve => {
-    $('#m-title').textContent = title; $('#m-text').textContent = text; $('#m-yes').textContent = okText || '确认'
-    $('#mask').classList.add('on')
-    const done = v => { $('#mask').classList.remove('on'); $('#m-yes').onclick = null; $('#m-no').onclick = null; resolve(v) }
-    $('#m-yes').onclick = () => done(true); $('#m-no').onclick = () => done(false)
-    $('#mask').onclick = e => { if (e.target === $('#mask')) done(false) }
-  })
-}
+function hdr() { return { Authorization: 'Bearer ' + S.token, 'Content-Type': 'application/json' } }
+
 async function api(path, opt = {}) {
-  const r = await fetch('/admin/api/' + path, {
-    ...opt,
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN, ...(opt.headers || {}) },
-  })
-  const d = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status))
-  return d
+  const r = await fetch('/admin/api/' + path, { ...opt, headers: hdr(), cache: 'no-store' });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { logoutLocal(); throw new Error('unauthorized') }
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+function logoutLocal() { localStorage.removeItem('qw_token'); S.token = ''; showGate() }
+function showGate(msg) { document.body.classList.add('gated'); $('#gate').style.display = 'flex'; if (msg) $('#pwErr').textContent = msg; setTimeout(() => $('#pwInput').focus(), 40) }
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(() => el.style.display = 'none', 2400) }
+
+/* ---------- 登录 ---------- */
+$('#pwBtn').onclick = doLogin;
+$('#pwInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin() });
+async function doLogin() {
+  const pw = $('#pwInput').value;
+  if (!pw) return;
+  $('#pwErr').textContent = '';
+  $('#pwBtn').disabled = true;
+  try {
+    const r = await fetch('/admin/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { $('#pwErr').textContent = j.error || '登录失败'; return }
+    S.token = j.token; localStorage.setItem('qw_token', j.token);
+    $('#gate').style.display = 'none'; document.body.classList.remove('gated'); $('#pwInput').value = '';
+    await load(true);
+  } catch (e) { $('#pwErr').textContent = '无法连接服务：' + e.message }
+  finally { $('#pwBtn').disabled = false }
 }
 
-const S = { state: null, stats: null, logs: [], filter: 'all', paused: false, lastAt: 0, busy: false }
-
-function renderChart(hourly) {
-  const el = $('#chart'), total = hourly.reduce((a, b) => a + b.n, 0)
-  $('#chart-tag').textContent = total ? `24 小时 ${fmt(total)} 次` : ''
-  if (!total) { el.innerHTML = '<div class="empty" style="width:100%;align-self:center">近 24 小时暂无调用</div>'; return }
-  const max = Math.max(1, ...hourly.map(h => h.n))
-  el.innerHTML = hourly.map((h, i) => {
-    const hh = new Date(h.t).getHours()
-    const hOk = Math.max(0, (h.n - h.err) / max * 100), hBad = Math.max(0, h.err / max * 100)
-    const label = (hh % 3 === 0) ? `<span class="xl">${String(hh).padStart(2, '0')}:00</span>` : ''
-    return `<div class="col" data-i="${i}">
-      <div class="stack">
-        <div class="bad" style="height:${hBad}%"></div>
-        <div class="ok" style="height:${hOk}%"></div>
-        ${h.n === 0 ? '<div class="zero"></div>' : ''}
-      </div>${label}</div>`
-  }).join('')
-  const tip = $('#tip')
-  el.querySelectorAll('.col').forEach(col => {
-    col.addEventListener('mouseenter', () => {
-      const h = hourly[+col.dataset.i], box = col.getBoundingClientRect()
-      const hh = new Date(h.t).getHours()
-      tip.innerHTML = `${String(hh).padStart(2, '0')}:00–${String((hh + 1) % 24).padStart(2, '0')}:00 · 调用 <b>${h.n}</b> · 失败 <b>${h.err}</b>${h.avgMs ? ' · 均 ' + secs(h.avgMs) : ''}`
-      tip.style.left = (box.left + box.width / 2) + 'px'
-      tip.style.top = (box.top - 8) + 'px'
-      tip.classList.add('on')
-    })
-    col.addEventListener('mouseleave', () => tip.classList.remove('on'))
-  })
+/* ---------- 视图切换 ---------- */
+document.querySelectorAll('.console-nav-link').forEach(b => b.onclick = () => setView(b.dataset.view));
+async function setView(name) {
+  S.view = name;
+  document.querySelectorAll('.console-nav-link').forEach(x => x.classList.toggle('active', x.dataset.view === name));
+  document.querySelectorAll('.console-view').forEach(v => v.classList.toggle('console-view-hidden', v.id !== 'view-' + name));
+  if (name === 'logs') await loadLogs();
+  if (name === 'usage') await loadUsage();
+  if (name === 'settings') await loadSettings();
 }
 
-function renderDist(el, rows, key, hot) {
-  const max = Math.max(1, ...rows.map(r => r.n))
-  $(el).innerHTML = rows.length ? rows.slice(0, 5).map(r => `
-    <div class="row">
-      <span class="nm" title="${esc(r[key])}">${esc(r[key])}</span>
-      <span class="tr"><i class="${hot ? 'hot' : ''}" style="width:${Math.max(2, Math.round(r.n / max * 100))}%"></i></span>
-      <span class="v">${fmt(r.n)}</span>
-    </div>`).join('') : '<div class="empty">暂无数据</div>'
+/* ---------- 看板 ---------- */
+function renderDash() {
+  const st = S.stats || {}, accts = S.state?.accounts || [];
+  const today = st.today || 0, todayErr = st.todayErr || 0;
+  $('#kToday').textContent = nf(today);
+  $('#kTodaySub').textContent = `累计 ${nf(st.total || 0)} 次 · 失败 ${nf(todayErr)}`;
+  const rate = today ? (today - todayErr) / today : 1;
+  $('#kSuccess').textContent = pct(rate);
+  $('#kSuccessSub').textContent = `成功 ${nf(today - todayErr)} / ${nf(today)}`;
+  $('#kLatency').textContent = ms(st.avgMs || 0);
+  $('#kLatencySub').textContent = `P95 ${ms(st.p95Ms || 0)}`;
+  const q = accts.reduce((s, a) => s + (a.quota?.remaining ?? 0), 0);
+  $('#kQuota').textContent = q ? q.toFixed(1) : '—';
+  $('#kQuotaSub').textContent = `${accts.filter(a => a.status === 'ok').length}/${accts.length} 个账号可用`;
+  $('#pageSub').textContent = st.total ? `共 ${nf(st.total)} 次调用` : '暂无调用记录';
+
+  const hs = st.hourly || [];
+  const max = Math.max(1, ...hs.map(h => h.n));
+  $('#chart').innerHTML = hs.map(h => {
+    const okH = Math.round(((h.n - h.err) / max) * 130), errH = Math.round((h.err / max) * 130);
+    return `<div class="b" title="${hhmm(h.t)} · 成功 ${h.n - h.err} · 失败 ${h.err} · 平均 ${ms(h.avgMs)}">
+      <i class="e" style="height:${errH}px"></i><i style="height:${okH}px"></i></div>`;
+  }).join('');
+  $('#xaxis').innerHTML = hs.length ? [0, 6, 12, 18].map(i => `<span>${hhmm(hs[i].t)}</span>`).join('') + '<span>现在</span>' : '';
+  $('#chartSub').textContent = `24 小时 ${nf(hs.reduce((s, h) => s + h.n, 0))} 次 · 失败 ${nf(hs.reduce((s, h) => s + h.err, 0))}`;
+
+  const bm = (st.byModelToday?.length ? st.byModelToday : st.byModel || []).slice(0, 8);
+  const mMax = Math.max(1, ...bm.map(m => m.n));
+  $('#modelDist').innerHTML = bm.length ? bm.map(m => `<div>
+      <div class="spread"><span class="mono">${esc(m.model)}</span><span class="dim">${nf(m.n)}</span></div>
+      <div class="quota"><i style="width:${Math.max(2, (m.n / mMax) * 100)}%"></i></div></div>`).join('')
+    : `<div class="empty">今天还没有调用</div>`;
+
+  $('#acctMini').innerHTML = accts.length ? accts.map(a => {
+    const rem = a.quota?.remaining ?? 0, tot = a.quota?.total ?? 0, r = tot ? rem / tot : 0;
+    return `<div>
+      <div class="spread"><span>${esc(a.email || a.name || a.uid)}</span>
+        <span class="badge ${a.status === 'ok' ? 'ok' : 'bad'}">${esc(a.status || '未知')}</span></div>
+      <div class="quota ${r < .15 ? 'low' : r < .4 ? 'mid' : ''}"><i style="width:${Math.max(1, r * 100)}%"></i></div>
+      <div class="kv"><b>${rem.toFixed(1)}</b> / ${tot || '—'} 分</div></div>`;
+  }).join('') : `<div class="empty">还没有账号</div>`;
+
+  const ba = (st.byAccount || []).slice(0, 8);
+  const aMax = Math.max(1, ...ba.map(m => m.n));
+  $('#acctDist').innerHTML = ba.length ? ba.map(m => `<div>
+      <div class="spread"><span>${esc(m.account)}</span><span class="dim">${nf(m.n)}${m.err ? ' · <span class="bad">失败 ' + m.err + '</span>' : ''}</span></div>
+      <div class="quota"><i style="width:${Math.max(2, (m.n / aMax) * 100)}%"></i></div></div>`).join('')
+    : `<div class="empty">今天还没有调用</div>`;
+
+  const recent = S.logs.filter(l => l.type === 'chat' || l.type === 'chat_error').slice(0, 6);
+  $('#recentLogs').innerHTML = recent.length ? recent.map(l => `<div class="spread" style="font-size:12px">
+      <span class="mono dim">${hhmm(l.ts)}</span>
+      <span class="mono" style="max-width:120px;overflow:hidden;text-overflow:ellipsis">${esc(l.model || l.type)}</span>
+      <span class="badge ${l.type === 'chat_error' ? 'bad' : l.type === 'chat' ? 'ok' : ''}">${l.ms ? ms(l.ms) : '—'}</span></div>`).join('')
+    : `<div class="empty">暂无</div>`;
 }
 
-function renderModels() {
-  const s = S.state, st = S.stats
-  if (!s) return
-  const todayMap = new Map((st?.byModelToday || []).map(r => [r.model, r]))
-  const allMap = new Map((st?.byModel || []).map(r => [r.model, r]))
-  $('#model-tag').textContent = `${s.models.length} 个可用`
-  $('#models').innerHTML = s.models.map(m => {
-    const t = todayMap.get(m.id), a = allMap.get(m.id)
-    const cls = !a ? '' : (a.err > a.n * 0.5 ? 'err' : 'on')
-    return `<div class="mcard">
-      <div class="id" title="${esc(m.id)}"><span class="st ${cls}"></span>${esc(m.id)}</div>
-      <div class="meta" title="${esc(m.name)}">${esc(m.name)}${m.limit ? ' · ' + Math.round(m.limit.context / 1024) + 'K' : ''}</div>
-      <div class="foot">
-        <span class="n">${fmt(t?.n ?? 0)}</span><span class="ms">今日</span>
-        <span class="ms" style="margin-left:auto">${a?.avgMs ? secs(a.avgMs) : '—'}</span>
-        <button class="btn sm gho" data-test="${esc(m.id)}">试跑</button>
-      </div>
-    </div>`
-  }).join('')
+/* ---------- 用量 ---------- */
+async function loadUsage() {
+  try {
+    const u = await api('usage?days=' + S.usageDays);
+    S.usage = u;
+    $('#usageSub').textContent = `近 ${u.days} 天`;
+    $('#uTotal').textContent = nf(u.total);
+    $('#uTotalSub').textContent = u.days + ' 天累计';
+    $('#uErr').textContent = nf(u.errors);
+    $('#uErrSub').textContent = u.total ? pct(u.errors / u.total) : '—';
+    $('#uAvg').textContent = ms(u.avgMs);
+    $('#uTokens').textContent = nf(u.tokens);
+    // 补齐窗口内没有调用的日期，避免柱子只有两根、宽度被拉满
+    const got = new Map((u.byDay || []).map(d => [d.day, d]));
+    const days = [];
+    const base = new Date(); base.setHours(12, 0, 0, 0);
+    for (let i = u.days - 1; i >= 0; i--) {
+      const d = new Date(base); d.setDate(d.getDate() - i);
+      const key = new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);
+      days.push(got.get(key) || { day: key, n: 0, err: 0, tokens: 0, avgMs: 0 });
+    }
+    const max = Math.max(1, ...days.map(d => d.n));
+    $('#usageBars').innerHTML = days.map(d => {
+      const okH = Math.round(((d.n - d.err) / max) * 130), errH = Math.round((d.err / max) * 130);
+      return `<div class="b" title="${d.day} · ${d.n} 次 · 失败 ${d.err}"><i class="e" style="height:${errH}px"></i><i style="height:${okH}px"></i></div>`;
+    }).join('') || '<div class="empty">窗口内没有调用</div>';
+    $('#usageX').innerHTML = days.length ? `<span>${days[0].day.slice(5)}</span><span>${days[days.length - 1].day.slice(5)}</span>` : '';
+    $('#usageModel').innerHTML = (u.byModel || []).map(m => `<tr><td class="mono">${esc(m.model)}</td><td class="num">${nf(m.n)}</td><td class="num">${m.err ? '<span class="bad">' + m.err + '</span>' : 0}</td><td class="num">${nf(m.tokens)}</td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">无数据</div></td></tr>';
+    $('#usageKey').innerHTML = (u.byKey || []).map(k => `<tr><td>${esc(k.key)}</td><td class="num">${nf(k.n)}</td><td class="num">${k.err || 0}</td></tr>`).join('') || '<tr><td colspan="3"><div class="empty">无数据</div></td></tr>';
+    $('#usageDay').innerHTML = days.slice().reverse().map(d => `<tr><td class="mono">${d.day}</td><td class="num">${nf(d.n)}</td><td class="num">${d.err ? '<span class="bad">' + d.err + '</span>' : 0}</td><td class="num">${nf(d.tokens)}</td><td class="num">${ms(d.avgMs)}</td></tr>`).join('') || '<tr><td colspan="5"><div class="empty">无数据</div></td></tr>';
+  } catch (e) { if (e.message !== 'unauthorized') toast('用量加载失败：' + e.message) }
 }
+document.querySelectorAll('#usageSeg button').forEach(b => b.onclick = () => {
+  S.usageDays = Number(b.dataset.d);
+  document.querySelectorAll('#usageSeg button').forEach(x => x.classList.toggle('on', x === b));
+  loadUsage();
+});
 
+/* ---------- 账号 ---------- */
 function renderAccounts() {
-  const s = S.state
-  if (!s) return
-  const ok = s.accounts.filter(a => a.status === 'ok').length
-  $('#acct-tag').textContent = `${ok}/${s.accounts.length} 可用`
-  $('#accounts').innerHTML = s.accounts.length ? s.accounts.map(a => {
-    const q = a.quota || {}, rem = q.remaining, total = q.total || 0, used = q.used || 0
-    const pct = total > 0 ? Math.min(100, Math.round(used / total * 100)) : 0
-    const low = q.exceeded === true || (typeof rem === 'number' && rem <= 0)
-    const tight = !low && total > 0 && pct >= 85
-    const bar = low ? 'empty' : tight ? 'low' : ''
-    return `<div class="acct">
-      <div class="t">
-        <div style="min-width:0">
-          <div class="mail">${esc(a.email || a.name || a.uid || '未命名账号')}</div>
-          <div class="ms">${esc(a.plan || '千问办公')} · 剩余 <b>${fmt(rem)}</b> 积分 · 刷新 ${ago(a.lastRefresh)}</div>
-        </div>
-        <span class="pl ${low ? 'bad' : 'ok'}">${low ? '积分不足' : '正常'}</span>
+  const accts = S.state?.accounts || [];
+  $('#acctSub').textContent = `${accts.length} 个账号 · ${accts.filter(a => a.status === 'ok').length} 个可用`;
+  $('#acctCards').innerHTML = accts.length ? accts.map(a => {
+    const rem = a.quota?.remaining ?? 0, tot = a.quota?.total ?? 0, r = tot ? rem / tot : 0;
+    const fp = a.fingerprint || {};
+    const claim = a.claim;
+    return `<div class="card">
+      <div class="spread">
+        <div><div class="k" style="margin:0">${esc(a.email || a.name || a.uid)}</div>
+          <div class="s">${esc(a.plan || '—')} · ${esc(a.organizationId || '无组织')}</div></div>
+        <span class="badge ${a.status === 'ok' ? 'ok' : 'bad'}">${esc(a.status || '未知')}</span>
       </div>
-      ${total > 0 ? `<div class="qbar"><i class="${bar}" style="width:${pct}%"></i></div>
-        <div class="ms" style="margin-top:4px">已用 ${fmt(used)} / ${fmt(total)}</div>` : ''}
-      <div class="ops">
-        <button class="btn sm gho" data-aref="${a.id}">刷新余额</button>
-        <button class="btn sm dan" data-adel="${a.id}">删除</button>
+      <div class="quota ${r < .15 ? 'low' : r < .4 ? 'mid' : ''}"><i style="width:${Math.max(1, r * 100)}%"></i></div>
+      <div class="kv" style="margin-top:6px"><b>${rem.toFixed(1)}</b> / ${tot || '—'} 分</div>
+      <div class="kv" style="margin-top:10px">设备指纹 <b class="mono">${esc(fp.machineId || '—')}</b></div>
+      <div class="kv">${esc(fp.platform || '—')} ${esc(fp.arch || '')} · 客户端 ${esc(fp.version || '—')}${fp.saltRot ? ` · 已换 ${fp.saltRot} 次` : ''}</div>
+      <div class="kv">每日领取 <b>${claim ? (claim.ok ? '已领' + (claim.credits != null ? ' +' + claim.credits : '') : '未领到') : '未领取'}</b>
+        ${claim?.message ? `<span class="dim">· ${esc(String(claim.message)).slice(0, 46)}</span>` : ''}</div>
+      <div class="kv">刷新于 ${a.lastRefresh ? ago(a.lastRefresh) : '—'}</div>
+      <div class="rowflex" style="margin-top:12px">
+        <button class="btn" data-act="claim" data-id="${a.id}">领取积分</button>
+        <button class="btn" data-act="refresh" data-id="${a.id}">刷新余额</button>
+        <button class="btn" data-act="fingerprint" data-id="${a.id}">换指纹</button>
+        <button class="btn danger" data-act="delete" data-id="${a.id}">删除</button>
       </div>
-    </div>`
-  }).join('') : '<div class="empty">还没有账号，点右上角「添加账号」授权一个</div>'
+    </div>`;
+  }).join('') : `<div class="card"><div class="empty">还没有账号<br><span class="dim">点右上角「添加账号」，用浏览器完成授权</span></div></div>`;
 }
 
+/* ---------- 密钥 ---------- */
 function renderKeys() {
-  const s = S.state
-  if (!s) return
-  $('#key-tag').textContent = `${s.keys.length} 个`
-  $('#keys').innerHTML = s.keys.length ? s.keys.map(k => `
-    <div class="krow">
-      <span class="nm" title="${esc(k.name)}">${esc(k.name || '令牌')}</span>
-      <span class="val" title="${esc(k.key)}">${esc(k.key)}</span>
-      <span class="pl ${k.disabled ? 'bad' : 'ok'}">${k.requests || 0} 次</span>
-      <button class="btn sm gho" data-kcp="${k.id}">复制</button>
-      <button class="btn sm gho" data-ktg="${k.id}" data-dis="${k.disabled ? 1 : 0}">${k.disabled ? '启用' : '停用'}</button>
-      <button class="btn sm dan" data-kdel="${k.id}">删</button>
-    </div>`).join('') : '<div class="empty">还没有令牌，下面新建一个</div>'
+  const keys = S.state?.keys || [];
+  $('#keyRows').innerHTML = keys.length ? keys.map(k => `<tr>
+    <td>${esc(k.name || '默认令牌')}</td>
+    <td class="mono dim">${esc((k.key || '').slice(0, 10))}…${esc((k.key || '').slice(-4))}</td>
+    <td class="num">${nf(k.requests || 0)}</td>
+    <td><span class="badge ${k.disabled ? 'bad' : 'ok'}">${k.disabled ? '已停用' : '启用'}</span></td>
+    <td class="num">
+      <button class="btn" data-kact="copy" data-id="${k.id}">复制</button>
+      <button class="btn" data-kact="toggle" data-id="${k.id}">${k.disabled ? '启用' : '停用'}</button>
+      <button class="btn danger" data-kact="del" data-id="${k.id}">删除</button>
+    </td></tr>`).join('') : `<tr><td colspan="5"><div class="empty">还没有令牌</div></td></tr>`;
 }
 
+/* ---------- 日志 ---------- */
 function renderLogs() {
-  const rows = S.logs.filter(l => S.filter === 'all' ? true
-    : S.filter === 'ok' ? l.type === 'chat'
-    : S.filter === 'err' ? l.type === 'chat_error'
-    : l.type === 'retry')
-  $('#log-tag').textContent = rows.length ? `${rows.length} 条` : ''
-  $('#logs').innerHTML = rows.length ? rows.map(l => {
-    const t = new Date(l.ts).toLocaleTimeString('zh-CN', { hour12: false })
-    const type = { chat: '调用', chat_error: '失败', retry: '重试', login: '授权', refresh_error: '刷新失败' }[l.type] || l.type
-    const cls = l.type === 'chat_error' || l.type === 'refresh_error' ? 'bad' : l.type === 'retry' ? 'warn' : l.type === 'chat' ? 'ok' : ''
-    const st = l.error ? `<span class="pl bad" title="${esc(l.error)}">${esc(String(l.error).slice(0, 42))}</span>`
-      : (l.status ? `<span class="pl ${l.status >= 400 ? 'bad' : 'ok'}">${l.status}</span>` : '—')
-    return `<tr><td class="mono">${t}</td><td><span class="pl ${cls}">${esc(type)}</span></td>
-      <td class="mono">${esc(l.key || '—')}</td><td class="wrap">${esc(l.account || '—')}</td>
-      <td class="mono">${esc(l.model || '—')}</td><td>${l.stream ? '是' : '否'}</td>
-      <td class="mono">${l.ms ? secs(l.ms) : '—'}</td><td>${st}</td></tr>`
-  }).join('') : '<tr><td colspan="8" class="empty">暂无记录</td></tr>'
+  const f = S.filter, q = S.q.toLowerCase();
+  const rows = S.logs.filter(l => {
+    const okType = f === 'all' ? true : f === 'ok' ? l.type === 'chat' : f === 'err' ? l.type === 'chat_error' : !['chat', 'chat_error'].includes(l.type);
+    if (!okType) return false;
+    if (!q) return true;
+    return [l.model, l.account, l.key, l.error, l.type].some(v => String(v || '').toLowerCase().includes(q));
+  });
+  $('#logSub').textContent = `${rows.length} / ${S.logs.length} 条`;
+  $('#logRows').innerHTML = rows.length ? rows.map(l => {
+    const isErr = l.type === 'chat_error';
+    return `<tr>
+      <td class="mono dim">${new Date(l.ts).toTimeString().slice(0, 8)}</td>
+      <td><span class="badge ${isErr ? 'bad' : l.type === 'chat' ? 'ok' : ''}">${esc(l.type)}</span></td>
+      <td class="mono">${esc(l.model || '—')}</td>
+      <td>${esc(l.account || '—')}</td>
+      <td class="num">${l.ms ? ms(l.ms) : '—'}</td>
+      <td class="dim">${esc(l.error || (l.tokens ? l.tokens + ' tok' : (l.key || '')))}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6"><div class="empty">没有符合条件的日志</div></td></tr>`;
 }
 
-function setLive(kind, text) {
-  $('#live').className = 'live ' + kind
-  $('#live-t').textContent = text
-}
-
-async function loadAll(silent) {
-  if (S.busy) return
-  S.busy = true
-  if (!silent) setLive('run', '刷新中…')
+/* ---------- 设置 ---------- */
+async function loadSettings() {
   try {
-    const [state, stats] = await Promise.all([api('state'), api('stats')])
-    S.state = state; S.stats = stats; S.lastAt = Date.now()
-    const s = state, st = stats
-    $('#ver-line').textContent = `千问办公 → OpenAI 兼容网关 · v${s.runtime.version || '?'}`
-    setLive(s.runtime.ok ? 'on' : 'err', s.runtime.ok ? '签名组件正常' : '签名组件缺失')
+    const s = await api('settings');
+    S.settings = s.settings;
+    $('#claimState').innerHTML = s.settings.claimEnabled
+      ? '<span class="badge ok">已开启</span> 每小时巡检，每号每天一次'
+      : '<span class="badge bad">已关闭</span> 不会自动领取';
+    $('#setPort').textContent = s.runtime.port;
+    $('#setVer').textContent = s.runtime.version + ' / ' + s.runtime.releaseVersion;
+    const rt = S.state?.runtime;
+    $('#setWasm').innerHTML = rt?.ok ? `<span class="badge ok">OK</span> ${esc(rt.sha256?.slice(0, 12) || '')}` : '<span class="badge bad">缺失</span>';
+  } catch (e) { if (e.message !== 'unauthorized') toast(e.message) }
+}
+$('#btnClaimToggle').onclick = async () => {
+  const next = !(S.settings?.claimEnabled !== false);
+  await api('settings', { method: 'POST', body: JSON.stringify({ claimEnabled: next }) });
+  await loadSettings(); toast(next ? '每日领取已开启' : '每日领取已关闭');
+};
+$('#btnPw').onclick = async () => {
+  const cur = $('#pwCur').value, a = $('#pwNew').value, b = $('#pwNew2').value;
+  if (a !== b) return toast('两次输入的新密码不一致');
+  if (a.length < 6) return toast('新密码至少 6 位');
+  try {
+    const r = await api('password', { method: 'POST', body: JSON.stringify({ current: cur, next: a }) });
+    if (r.token) { S.token = r.token; localStorage.setItem('qw_token', r.token) }
+    $('#pwCur').value = $('#pwNew').value = $('#pwNew2').value = '';
+    toast('密码已修改');
+  } catch (e) { toast(e.message) }
+};
+$('#btnLogout').onclick = async () => { try { await api('logout', { method: 'POST' }) } catch {} logoutLocal() };
 
-    $('#k-today').textContent = fmt(st.today)
-    $('#k-today-s').textContent = st.todayErr ? `失败 ${st.todayErr} 次` : '全部成功'
-    $('#k-rate').textContent = (st.successRate * 100).toFixed(1) + '%'
-    $('#k-rate-s').textContent = `累计 ${fmt(st.total)} 次 · 失败 ${fmt(st.errors)}`
-    $('#k-ms').textContent = st.avgMs ? secs(st.avgMs) : '—'
-    $('#k-ms-s').textContent = st.p95Ms ? `P95 ${secs(st.p95Ms)}` : '暂无样本'
-    $('#k-quota').textContent = fmt(s.stats.remaining)
-    $('#k-quota-s').textContent = s.stats.accounts ? `${s.stats.usable}/${s.stats.accounts} 个账号可用` : '还没有账号'
-    $('#k-acct').textContent = s.stats.usable
-    $('#k-acct-s').textContent = s.stats.accounts ? `共 ${s.stats.accounts} 个已授权` : '待授权'
-
-    $('#s-wasm').textContent = s.runtime.ok ? `${s.runtime.sha256.slice(0, 16)}… ${(s.runtime.bytes / 1024).toFixed(0)}KB` : (s.runtime.error || '缺失')
-    $('#s-ver').textContent = s.runtime.version ? `${s.runtime.version} / ${s.runtime.releaseVersion}` : '—'
-    $('#s-req').textContent = fmt(s.stats.requests)
-    $('#s-base').textContent = location.origin + '/v1'
-    $('#s-models').textContent = String(s.models.length)
-    $('#s-up').textContent = new Date(S.lastAt).toLocaleTimeString('zh-CN', { hour12: false })
-    $('#base-url').textContent = location.origin + '/v1'
-
-    renderChart(st.hourly)
-    renderDist('#by-model', st.byModel, 'model', true)
-    renderDist('#by-account', st.byAccount, 'account')
-    renderModels(); renderAccounts(); renderKeys()
+/* ---------- 添加账号 ---------- */
+let pollTimer = null;
+$('#btnAddAccount').onclick = async () => {
+  $('#addMask').style.display = 'flex';
+  $('#authUrl').value = '';
+  $('#pollMsg').textContent = '正在生成授权链接…';
+  $('#pollDot').className = 'dot warn';
+  await startAuth();
+};
+$('#btnReauth').onclick = startAuth;
+$('#btnCloseAdd').onclick = () => { $('#addMask').style.display = 'none'; clearInterval(pollTimer) };
+$('#btnCopyUrl').onclick = () => {
+  const v = $('#authUrl').value; if (!v) return;
+  navigator.clipboard?.writeText(v).then(() => toast('链接已复制'), () => { $('#authUrl').select(); document.execCommand('copy'); toast('链接已复制') });
+};
+async function startAuth() {
+  clearInterval(pollTimer);
+  try {
+    const r = await api('login/start', { method: 'POST', body: '{}' });
+    $('#authUrl').value = r.url;
+    $('#btnOpenUrl').href = r.url;
+    $('#pollMsg').textContent = '等待授权…（点“打开”在浏览器里确认）';
+    $('#pollDot').className = 'dot warn';
+    let tries = 0;
+    pollTimer = setInterval(async () => {
+      tries++;
+      try {
+        const p = await api('login/poll?flowId=' + encodeURIComponent(r.flowId));
+        if (p.status === 'ok') {
+          clearInterval(pollTimer);
+          $('#pollMsg').textContent = '授权成功，账号已添加';
+          $('#pollDot').className = 'dot ok';
+          await load(true);
+          setTimeout(() => { $('#addMask').style.display = 'none' }, 1200);
+          return;
+        }
+        $('#pollMsg').textContent = `等待授权…已等待 ${tries * 3}s`;
+      } catch (e) {
+        if (e.message !== 'unauthorized') { $('#pollMsg').textContent = '出错：' + e.message; $('#pollDot').className = 'dot bad'; clearInterval(pollTimer) }
+      }
+    }, 3000);
+    setTimeout(() => clearInterval(pollTimer), 10 * 60 * 1000);
   } catch (e) {
-    setLive('err', '连接失败')
-    if (!silent) toast('加载失败：' + e.message)
-  } finally { S.busy = false }
+    $('#pollMsg').textContent = '无法生成授权链接：' + e.message;
+    $('#pollDot').className = 'dot bad';
+  }
 }
 
+/* ---------- 交互 ---------- */
+document.addEventListener('click', async ev => {
+  const t = ev.target.closest('button[data-act],button[data-kact]');
+  if (!t) return;
+  const id = t.dataset.id;
+  t.disabled = true;
+  try {
+    if (t.dataset.act === 'claim') {
+      const r = await api('account/claim', { method: 'POST', body: JSON.stringify({ id }) });
+      await load(true);
+      toast(r.ok ? ('已领取' + (r.claim.credits != null ? ' +' + r.claim.credits + ' 分' : '')) : ('未领到：' + (r.claim.message || '').slice(0, 60)));
+    }
+    if (t.dataset.act === 'refresh') { await api('account/refresh', { method: 'POST', body: JSON.stringify({ id }) }); await load(true); toast('余额已刷新') }
+    if (t.dataset.act === 'fingerprint') {
+      if (!confirm('换指纹会生成新的设备标识，账号可能需要重新授权。继续？')) return;
+      await api('account/fingerprint', { method: 'POST', body: JSON.stringify({ id }) }); await load(true); toast('指纹已更换');
+    }
+    if (t.dataset.act === 'delete') {
+      if (!confirm('删除这个账号？')) return;
+      await api('account/delete', { method: 'POST', body: JSON.stringify({ id }) }); await load(true);
+    }
+    if (t.dataset.kact === 'copy') {
+      const r = await api('keys/full?id=' + encodeURIComponent(id));
+      navigator.clipboard?.writeText(r.key || '').then(() => toast('已复制完整密钥'), () => toast('复制失败，请手动查看'));
+    }
+    if (t.dataset.kact === 'toggle') {
+      const k = (S.state.keys || []).find(x => x.id === id);
+      await api('keys', { method: 'POST', body: JSON.stringify({ id, disabled: !k.disabled }) }); await load(true);
+    }
+    if (t.dataset.kact === 'del') {
+      if (!confirm('删除这个令牌？调用会立刻失效')) return;
+      await api('keys/delete', { method: 'POST', body: JSON.stringify({ id }) }); await load(true);
+    }
+  } catch (e) { if (e.message !== 'unauthorized') alert('操作失败：' + e.message) }
+  finally { t.disabled = false }
+});
+
+$('#btnBulkRefresh').onclick = () => bulk('refresh');
+$('#btnBulkClaim').onclick = () => bulk('claim');
+async function bulk(op) {
+  const label = op === 'refresh' ? '刷新余额' : '领取积分';
+  if (!confirm(`对全部账号执行「${label}」？可能要几十秒。`)) return;
+  toast(label + '中…');
+  try {
+    const r = await api('bulk', { method: 'POST', body: JSON.stringify({ op }) });
+    const ok = (r.results || []).filter(x => x.ok).length;
+    await load(true);
+    toast(`${label}完成：${ok}/${(r.results || []).length} 成功`);
+  } catch (e) { if (e.message !== 'unauthorized') toast(label + '失败：' + e.message) }
+}
+$('#btnAddKey').onclick = async () => {
+  const name = prompt('令牌名称', '默认令牌'); if (name === null) return;
+  try {
+    const r = await api('keys', { method: 'POST', body: JSON.stringify({ name }) });
+    await load(true);
+    alert('令牌已创建，请保存（只显示这一次）：\n\n' + r.key);
+  } catch (e) { alert(e.message) }
+};
+$('#logSearch').oninput = e => { S.q = e.target.value.trim(); renderLogs() };
+document.querySelectorAll('#logSeg button').forEach(b => b.onclick = () => {
+  S.filter = b.dataset.f;
+  document.querySelectorAll('#logSeg button').forEach(x => x.classList.toggle('on', x === b));
+  renderLogs();
+});
+
+/* ---------- 数据加载 ---------- */
+async function load(quiet) {
+  try {
+    const [stats, state, logs] = await Promise.all([api('stats'), api('state'), api('logs?n=200').catch(() => ({ logs: [] }))]);
+    S.stats = stats; S.state = state; S.logs = logs.logs || [];
+    S.updated = Date.now();
+    $('#ctxPill').textContent = '运行中'; $('#ctxPill').className = 'pill ok';
+    $('#sideDot').className = 'console-side-dot';
+    $('#sideState').textContent = state.runtime?.ok ? '已连接' : '签名组件缺失';
+    $('#sideVer').textContent = 'v' + (state.runtime?.version || '');
+    $('#ctxPort').textContent = ':' + (location.port || '4021');
+    renderDash(); renderAccounts(); renderKeys(); renderLogs();
+    if (!quiet) toast('已刷新');
+  } catch (e) {
+    if (e.message === 'unauthorized') return;
+    $('#ctxPill').textContent = '连接失败'; $('#ctxPill').className = 'pill bad';
+    $('#sideDot').className = 'console-side-dot bad';
+    $('#sideState').textContent = e.message.slice(0, 40);
+  }
+}
 async function loadLogs() {
+  try { const r = await api('logs?n=300'); S.logs = r.logs || []; renderLogs(); renderDash_recentOnly() } catch {}
+}
+function renderDash_recentOnly() { if (S.view === 'dash') renderDash() }
+
+$('#btnRefresh').onclick = () => { load(); if (S.view === 'usage') loadUsage(); if (S.view === 'settings') loadSettings() };
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(true) });
+setInterval(() => { if (!document.hidden && S.view === 'dash') load(true) }, 5000);
+setInterval(() => { if (!document.hidden && S.view === 'logs') loadLogs() }, 8000);
+setInterval(() => { if (!document.hidden && S.updated) $('#ctxUpdate').textContent = ago(S.updated) + '更新' }, 5000);
+
+/* ---------- 启动 ---------- */
+(async function boot() {
+  const qt = new URLSearchParams(location.search).get('token');
+  if (qt) { S.token = qt; localStorage.setItem('qw_token', qt) }
+  if (!S.token) { showGate(); return }
   try {
-    const d = await api('logs?n=120')
-    S.logs = d.logs || []
-    if (!S.paused) renderLogs()
-  } catch {}
-}
-
-async function testModel(id, btn) {
-  if (btn) { btn.disabled = true; btn.textContent = '跑…' }
-  try {
-    const r = await api('test', { method: 'POST', body: JSON.stringify({ model: id }) })
-    const head = `${esc(r.model)} → <span class="mono">${esc(r.upstream)}</span> · ${r.ok ? '<span class="pl ok">成功</span>' : '<span class="pl bad">失败</span>'} · ${secs(r.ms)}`
-    $('#test-out').innerHTML = `<pre class="out">${head}\n${esc(String(r.text || r.error || '').slice(0, 400))}</pre>`
-  } catch (e) {
-    $('#test-out').innerHTML = `<pre class="out">${esc(id)} 试跑出错：${esc(e.message)}</pre>`
-  } finally { if (btn) { btn.disabled = false; btn.textContent = '试跑' } }
-}
-
-document.addEventListener('click', async e => {
-  const t = e.target.closest('button, a'); if (!t) return
-  if (t.id === 'btn-refresh') { await loadAll(); await loadLogs(); toast('已刷新'); return }
-  if (t.dataset.test) { await testModel(t.dataset.test, t); return }
-  if (t.id === 'btn-test-all') {
-    for (const m of (S.state?.models || [])) await testModel(m.id)
-    toast('全部试跑完成'); return
-  }
-  if (t.id === 'btn-copy-base') { copyText(location.origin + '/v1'); toast('Base URL 已复制'); return }
-  if (t.dataset.f) {
-    $$('#log-chips .chip').forEach(x => x.classList.remove('on'))
-    t.classList.add('on'); S.filter = t.dataset.f; renderLogs(); return
-  }
-  if (t.dataset.kcp) {
-    try { const r = await api('keys/full?id=' + encodeURIComponent(t.dataset.kcp)); copyText(r.key); toast('完整 Key 已复制') }
-    catch (err) { toast(err.message) }
-    return
-  }
-  if (t.dataset.aref) {
-    t.disabled = true
-    try { await api('account/refresh', { method: 'POST', body: JSON.stringify({ id: t.dataset.aref }) }); toast('已刷新'); await loadAll(true) }
-    catch (err) { toast(err.message) } finally { t.disabled = false }
-    return
-  }
-  if (t.dataset.adel) {
-    if (!await confirmBox('删除账号', '删掉后这个账号的授权信息会从本地清除，需要重新授权才能再用。', '删除')) return
-    try { await api('account/delete', { method: 'POST', body: JSON.stringify({ id: t.dataset.adel }) }); toast('已删除'); await loadAll(true) }
-    catch (err) { toast(err.message) }
-    return
-  }
-  if (t.dataset.ktg) {
-    try { await api('keys', { method: 'POST', body: JSON.stringify({ id: t.dataset.ktg, disabled: t.dataset.dis === '0' }) }); await loadAll(true) }
-    catch (err) { toast(err.message) }
-    return
-  }
-  if (t.dataset.kdel) {
-    if (!await confirmBox('删除令牌', '删掉后使用它的客户端会立刻 401。', '删除')) return
-    try { await api('keys/delete', { method: 'POST', body: JSON.stringify({ id: t.dataset.kdel }) }); toast('已删除'); await loadAll(true) }
-    catch (err) { toast(err.message) }
-    return
-  }
-  if (t.id === 'btn-new-key') {
-    const name = $('#new-key-name').value.trim()
-    t.disabled = true
-    try {
-      const r = await api('keys', { method: 'POST', body: JSON.stringify({ name }) })
-      $('#new-key-name').value = ''
-      await loadAll(true)
-      copyText(r.key); toast('已新建并复制到剪贴板')
-    } catch (err) { toast(err.message) } finally { t.disabled = false }
-    return
-  }
-  if (t.id === 'btn-add') {
-    try {
-      const d = await api('login/start', { method: 'POST' })
-      $('#auth-box').classList.add('on')
-      $('#auth-url').textContent = d.url; $('#auth-url').href = d.url
-      $('#auth-status').textContent = '等待授权…（在浏览器里完成授权后这里会自动跳转）'
-      clearInterval(window.__poll)
-      window.__poll = setInterval(async () => {
-        try {
-          const r = await api('login/poll?flowId=' + encodeURIComponent(d.flowId))
-          if (r.status === 'ok') {
-            clearInterval(window.__poll); $('#auth-box').classList.remove('on')
-            toast('授权成功：' + (r.account.email || r.account.uid)); await loadAll(true)
-          }
-        } catch (err) { clearInterval(window.__poll); $('#auth-status').textContent = err.message }
-      }, 2500)
-    } catch (err) { toast(err.message) }
-    return
-  }
-  if (t.id === 'btn-cancel-auth') { clearInterval(window.__poll); $('#auth-box').classList.remove('on'); return }
-})
-
-$('#logs').closest('.tw').addEventListener('scroll', e => {
-  const el = e.currentTarget
-  S.paused = el.scrollTop + el.clientHeight < el.scrollHeight - 40
-}, { passive: true })
-
-document.addEventListener('keydown', e => {
-  if (e.target.matches('input,textarea,select')) return
-  if (e.key === 'r' || e.key === 'R') { loadAll(); loadLogs() }
-  if (e.key === 'Escape') $('#mask').classList.remove('on')
-})
-
-if (!TOKEN) {
-  document.body.innerHTML = '<div class="wrap" style="padding-top:80px;text-align:center">'
-    + '<h1 style="font-size:18px">需要管理令牌</h1>'
-    + '<p class="hint">在地址后面加 <code>?token=你的管理令牌</code>，令牌在服务器 <code>data/admin_token.txt</code>。</p></div>'
-} else {
-  loadAll(); loadLogs()
-  setInterval(() => { if (!document.hidden) loadAll(true) }, 5000)
-  setInterval(() => { if (!document.hidden) loadLogs() }, 8000)
-  setInterval(() => {
-    if (!S.lastAt) return
-    const s = Math.round((Date.now() - S.lastAt) / 1000)
-    if (S.state?.runtime?.ok) setLive('on', s < 3 ? '实时' : s + ' 秒前更新')
-  }, 1000)
-}
+    const r = await fetch('/admin/api/session', { headers: hdr() });
+    const j = await r.json().catch(() => ({}));
+    if (!j.ok) { logoutLocal(); return }
+    await load(true);
+    const want = (location.hash || '').replace('#', '');
+    if (want === 'add') { await setView('accounts'); $('#btnAddAccount').click(); return }
+    if (want && document.getElementById('view-' + want)) await setView(want);
+  } catch { logoutLocal() }
+})();
 </script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 // 基于 tianyn1990/qwenwork-magpie (MIT) 的 lib/ 实现，去掉 Magpie 宿主依赖，改为独立服务 + 管理后台。
 import http from 'node:http'
 import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, statSync } from 'node:fs'
-import { randomUUID, randomBytes, createHash } from 'node:crypto'
+import { randomUUID, randomBytes, createHash, scryptSync, timingSafeEqual } from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -10,7 +10,10 @@ import { GATEWAY, MODELS, FALLBACK_VERSION, FALLBACK_RELEASE } from './lib/const
 import { startLogin, pollLogin, finishLogin, getAccount, renewAuth, quotaForMagpie } from './lib/account.mjs'
 import { chatResponse } from './lib/chat.mjs'
 import { prepareQwenworkInfer } from './lib/wasm.mjs'
+import { deriveMachineId, deviceProfile, newSalt } from './lib/fingerprint.mjs'
+import { claimDaily, fetchBalance, today } from './lib/earn.mjs'
 import { ProviderError, errorResponse, redact } from './lib/errors.mjs'
+import { PanelAuth } from './lib/panelauth.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const DATA = path.join(ROOT, 'data')
@@ -19,18 +22,21 @@ const LOG_FILE = path.join(DATA, 'logs.jsonl')
 const WASM_FILE = process.env.QWENWORK_WASM_PATH || path.join(ROOT, 'qoder_auth_wasm_bg.wasm')
 const PORT = Number(process.env.PORT || 4021)
 
-// 对外模型名 → 千问办公档位。老名字（qwen3.8max / qwen3.8）保留兼容，
-// 新增档位按官方客户端的 modelSelector 枚举逐个映射。
+// 对外模型名 → 千问办公档位。档位键取自官方客户端 2.1.0 的
+// resources/dynamic-text/qwenwork.json（model.* 键）+ app.asar 的 tier 枚举。
 const PUBLIC_MODELS = {
-  'qwen3.8max': 'qwork-advanced',      // 兼容旧调用
-  'qwen3.8': 'qwork-advanced',         // 别名
-  'qwenwork-lite': 'qwork-lite',
-  'qwenwork-standard': 'qwork-auto',
-  'qwenwork-advanced': 'qwork-advanced',
-  'qwenwork-ultimate': 'qwork-ultimate',
-  'qwenwork-enterprise': 'safety',
-  'qwen3.7-max': 'qmodel_latest',
-  'qwen3.6-plus': 'q35model_preview',
+  'qwen3.8max': 'qwork-advanced',        // 兼容旧调用
+  'qwen3.8': 'qwork-advanced',
+  'qwen3.8-max': 'qmodel_latest',        // Qwen3.8-Max（官方「千问最强模型」）
+  'qwen3.8-max-preview': 'qwen3.8-max-preview',
+  'qwen3.6-plus': 'q35model_preview',    // Qwen3.6-Plus-DogFooding
+  'deepseek-v4-pro': 'dmodel_latest',    // DeepSeek V4 Pro
+  'glm-5.3': 'gmodel_latest',            // GLM-5.3
+  'qwenwork-lite': 'qwork-lite',         // 经济
+  'qwenwork-standard': 'qwork-auto',     // 标准
+  'qwenwork-advanced': 'qwork-advanced', // 高级
+  'qwenwork-ultimate': 'qwork-ultimate', // 旗舰
+  'qwenwork-enterprise': 'safety',       // 企业专属
 }
 // 大小写不敏感解析：上游调用常用 Qwen3.8-Max 这种写法
 const PUBLIC_LOWER = new Map(Object.keys(PUBLIC_MODELS).map(k => [k.toLowerCase(), k]))
@@ -64,6 +70,8 @@ function log(entry) {
 // ---------- 管理令牌 ----------
 const ADMIN_FILE = path.join(DATA, 'admin_token.txt')
 let ADMIN_TOKEN = process.env.ADMIN_TOKEN || (existsSync(ADMIN_FILE) ? readFileSync(ADMIN_FILE, 'utf8').trim() : '')
+const panelAuth = new PanelAuth(DATA, { defaultPassword: process.env.PANEL_PASSWORD || '147369qAz' })
+setInterval(() => panelAuth.sweep(), 3600 * 1000).unref()
 if (!ADMIN_TOKEN) {
   ADMIN_TOKEN = randomBytes(18).toString('base64url')
   writeFileSync(ADMIN_FILE, ADMIN_TOKEN, { mode: 0o600 })
@@ -112,7 +120,49 @@ const publicAccount = a => ({
   organizationId: a.organizationId, status: a.status, quota: a.quota ?? null,
   createdAt: a.createdAt, lastRefresh: a.lastRefresh, accessExpires: a.accessExpires,
   refreshExpires: a.refreshExpires, hasRefresh: !!a.refresh,
+  claim: a.claim ?? null, balance: a.balance ?? null,
+  fingerprint: {
+    machineId: a.machineId ? `${a.machineId.slice(0, 8)}…${a.machineId.slice(-4)}` : '',
+    platform: a.device?.platform ?? '', arch: a.device?.arch ?? '',
+    version: a.device?.version ?? '', release: a.device?.releaseVersion ?? '',
+    saltRot: a.fpRotated ?? 0,
+  },
 })
+
+// ---------- 设备指纹（参考 WB 反代：一账号一台固定设备，可换指纹） ----------
+function ensureDevice(acc) {
+  const rt = runtimeInfo()
+  if (!acc.fpSalt) acc.fpSalt = newSalt()
+  const base = acc.device && acc.device.platform ? acc.device : deviceProfile(acc.uid)
+  // 平台/架构一期固定（等于「这台机器没变」），客户端版本永远跟运行时一致
+  acc.device = { ...base, version: rt.version, releaseVersion: rt.releaseVersion }
+  const derived = deriveMachineId(acc.uid, acc.fpSalt)
+  // 登录时拿到的 machineId 不动（可能已绑在 refresh token 上），只补缺失的
+  if (!acc.machineId) acc.machineId = derived
+  return acc
+}
+function rotateFingerprint(acc) {
+  acc.fpSalt = newSalt()
+  acc.fpRotated = (acc.fpRotated ?? 0) + 1
+  acc.device = null
+  ensureDevice(acc)
+  acc.machineId = deriveMachineId(acc.uid, acc.fpSalt)
+  return acc
+}
+
+// ---------- 每日免费积分（千问办公的「签到」） ----------
+async function claimAccount(acc, { force = false } = {}) {
+  const day = today()
+  if (!force && acc.claim?.date === day && acc.claim?.ok) return acc.claim
+  const r = await claimDaily(acc)
+  acc.claim = { date: day, ok: r.ok, credits: r.credits, message: r.message, at: Date.now() }
+  if (r.ok) {
+    const bal = await fetchBalance(acc).catch(() => null)
+    if (bal) acc.balance = bal
+  }
+  log({ type: 'claim', account: acc.email || acc.uid, ok: r.ok, credits: r.credits ?? null, message: r.message })
+  return acc.claim
+}
 
 // ---------- 账号刷新 ----------
 async function refreshAccount(acc, { force = false } = {}) {
@@ -284,9 +334,33 @@ const server = http.createServer(async (req, res) => {
 
     // 管理 API
     if (p.startsWith('/admin/api/')) {
-      const token = (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '') || url.searchParams.get('token')
-      if (token !== ADMIN_TOKEN) return json(res, 401, { error: 'unauthorized' })
       const action = p.slice('/admin/api/'.length)
+      const bearer = (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '') || url.searchParams.get('token') || ''
+
+      // ---- 无需登录的三个端点 ----
+      if (action === 'login' && req.method === 'POST') {
+        const { password } = await readBody(req)
+        if (!panelAuth.verify(password)) { await sleep(300); return json(res, 401, { error: '密码不正确' }) }
+        return json(res, 200, { ok: true, token: panelAuth.issue(), expiresIn: Math.floor(panelAuth.ttlMs / 1000) })
+      }
+      if (action === 'session' && req.method === 'GET') {
+        const ok = bearer === ADMIN_TOKEN || panelAuth.check(bearer)
+        return json(res, 200, { ok })
+      }
+
+      if (!(bearer === ADMIN_TOKEN || panelAuth.check(bearer))) return json(res, 401, { error: '未登录或会话已过期' })
+
+      if (action === 'logout' && req.method === 'POST') {
+        panelAuth.revoke(bearer)
+        return json(res, 200, { ok: true })
+      }
+      if (action === 'password' && req.method === 'POST') {
+        const { current, next } = await readBody(req)
+        if (!panelAuth.verify(current)) return json(res, 400, { error: '当前密码不正确' })
+        if (!next || String(next).length < 6) return json(res, 400, { error: '新密码至少 6 位' })
+        panelAuth.setPassword(String(next))
+        return json(res, 200, { ok: true, token: panelAuth.issue() })
+      }
 
       if (action === 'state' && req.method === 'GET') {
         const rt = runtimeInfo()
@@ -328,6 +402,7 @@ const server = http.createServer(async (req, res) => {
           state.accounts.push(acc)
         }
         Object.assign(acc, auth, { status: 'ok' })
+        ensureDevice(acc)
         saveState()
         await refreshAccount(acc, { force: true }).catch(() => {})
         log({ type: 'login', account: acc.email || acc.uid })
@@ -340,6 +415,25 @@ const server = http.createServer(async (req, res) => {
         if (!acc) return json(res, 404, { error: '账号不存在' })
         await refreshAccount(acc, { force: true })
         return json(res, 200, { account: publicAccount(acc) })
+      }
+
+      if (action === 'account/claim' && req.method === 'POST') {
+        const { id } = await readBody(req)
+        const acc = state.accounts.find(a => a.id === id)
+        if (!acc) return json(res, 404, { error: '账号不存在' })
+        const r = await claimAccount(acc, { force: true })
+        saveState()
+        return json(res, 200, { ok: r.ok, claim: r, account: publicAccount(acc) })
+      }
+
+      if (action === 'account/fingerprint' && req.method === 'POST') {
+        const { id } = await readBody(req)
+        const acc = state.accounts.find(a => a.id === id)
+        if (!acc) return json(res, 404, { error: '账号不存在' })
+        rotateFingerprint(acc)
+        saveState()
+        log({ type: 'fingerprint', account: acc.email || acc.uid, rot: acc.fpRotated })
+        return json(res, 200, { ok: true, account: publicAccount(acc) })
       }
 
       if (action === 'account/delete' && req.method === 'POST') {
@@ -441,6 +535,78 @@ const server = http.createServer(async (req, res) => {
         })
       }
 
+      if (action === 'bulk' && req.method === 'POST') {
+        // 批量：全部刷新余额 / 全部领取每日积分（面板不要为每个号发一次请求）
+        const { op } = await readBody(req)
+        if (!['refresh', 'claim'].includes(op)) return json(res, 400, { error: '未知操作' })
+        const out = []
+        for (const acc of state.accounts) {
+          try {
+            if (op === 'refresh') await refreshAccount(acc, { force: true })
+            else await claimAccount(acc, { force: true })
+            out.push({ id: acc.id, email: acc.email || acc.uid, ok: true })
+          } catch (e) {
+            out.push({ id: acc.id, email: acc.email || acc.uid, ok: false, error: redact(e.message) })
+          }
+        }
+        saveState()
+        return json(res, 200, { ok: true, results: out })
+      }
+
+      if (action === 'usage' && req.method === 'GET') {
+        // 近 N 天用量：按日 + 按模型聚合（面板「用量」页）
+        const days = Math.min(Math.max(Number(url.searchParams.get('days') || 7), 1), 30)
+        const since = new Date(); since.setHours(0, 0, 0, 0); since.setDate(since.getDate() - (days - 1))
+        const byDay = new Map(), byModel = new Map(), byKey = new Map()
+        let total = 0, errs = 0, msSum = 0, msN = 0, tokens = 0
+        if (existsSync(LOG_FILE)) {
+          for (const line of readFileSync(LOG_FILE, 'utf8').split('\n')) {
+            if (!line.trim()) continue
+            let l; try { l = JSON.parse(line) } catch { continue }
+            if (l.type !== 'chat' && l.type !== 'chat_error') continue
+            if (l.ts < since.getTime()) continue
+            const day = new Date(l.ts + 8 * 3600 * 1000).toISOString().slice(0, 10)
+            const isErr = l.type === 'chat_error'
+            total++; if (isErr) errs++
+            if (l.ms) { msSum += l.ms; msN++ }
+            if (l.tokens) tokens += l.tokens
+            const d = byDay.get(day) || { day, n: 0, err: 0, tokens: 0, msSum: 0, msN: 0 }
+            d.n++; if (isErr) d.err++; if (l.tokens) d.tokens += l.tokens; if (l.ms) { d.msSum += l.ms; d.msN++ }
+            byDay.set(day, d)
+            const mk = l.model || 'unknown'
+            const m = byModel.get(mk) || { model: mk, n: 0, err: 0, tokens: 0 }
+            m.n++; if (isErr) m.err++; if (l.tokens) m.tokens += l.tokens
+            byModel.set(mk, m)
+            const kk = l.key || '—'
+            const k = byKey.get(kk) || { key: kk, n: 0, err: 0 }
+            k.n++; if (isErr) k.err++
+            byKey.set(kk, k)
+          }
+        }
+        return json(res, 200, {
+          days,
+          total, errors: errs, tokens,
+          avgMs: msN ? Math.round(msSum / msN) : 0,
+          byDay: [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day)).map(d => ({ ...d, avgMs: d.msN ? Math.round(d.msSum / d.msN) : 0 })),
+          byModel: [...byModel.values()].sort((a, b) => b.n - a.n),
+          byKey: [...byKey.values()].sort((a, b) => b.n - a.n),
+        })
+      }
+
+      if (action === 'settings' && req.method === 'GET') {
+        return json(res, 200, {
+          settings: { claimEnabled: state.settings?.claimEnabled !== false },
+          runtime: { version: runtimeInfo().version, releaseVersion: runtimeInfo().releaseVersion, port: PORT },
+        })
+      }
+      if (action === 'settings' && req.method === 'POST') {
+        const body = await readBody(req)
+        state.settings = { ...(state.settings || {}) }
+        if (typeof body.claimEnabled === 'boolean') state.settings.claimEnabled = body.claimEnabled
+        saveState()
+        return json(res, 200, { ok: true, settings: { claimEnabled: state.settings.claimEnabled !== false } })
+      }
+
       if (action === 'test' && req.method === 'POST') {
         // 后台「试跑」：非流式打一条，回耗时与正文，用来验证新档位能否出字
         const { model = 'qwen3.8max', prompt = '用一句话介绍你自己' } = await readBody(req)
@@ -510,6 +676,27 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`[qwenwork2api] admin  http://127.0.0.1:${PORT}/admin?token=${ADMIN_TOKEN}`)
   console.log(`[qwenwork2api] wasm   ${rt.ok ? 'OK ' + rt.sha256.slice(0, 16) + ' ' + rt.bytes + 'B' : 'MISSING ' + rt.error}`)
 })
+
+// 启动时补齐设备画像与指纹盐值（老账号没有这两个字段）
+for (const acc of state.accounts) { try { ensureDevice(acc) } catch {} }
+saveState()
+
+// 启动后 45 秒补一次当日领取（错峰，别跟首屏请求抢），之后每小时检查一次
+setTimeout(() => { (async () => {
+  if (state.settings?.claimEnabled === false) return
+  for (const acc of state.accounts) {
+    try { await claimAccount(acc) } catch (e) { log({ type: 'claim_error', account: acc.email || acc.uid, error: redact(e.message) }) }
+  }
+  saveState()
+})() }, 45 * 1000).unref()
+setInterval(async () => {
+  if (state.settings?.claimEnabled === false) return
+  for (const acc of state.accounts) {
+    if (acc.claim?.date === today() && acc.claim?.ok) continue
+    try { await claimAccount(acc) } catch (e) { log({ type: 'claim_error', account: acc.email || acc.uid, error: redact(e.message) }) }
+  }
+  saveState()
+}, 60 * 60 * 1000).unref()
 
 // 定时刷新余额（默认 10 分钟）
 const REFRESH_MS = Number(process.env.REFRESH_MS || 10 * 60 * 1000)
