@@ -381,7 +381,19 @@ body.gated .console-shell{visibility:hidden}
               <span id="claimState">—</span>
               <button class="btn" id="btnClaimToggle">切换</button>
             </div>
-            <div class="kv" style="margin-top:12px">领取接口 <b class="mono">daily.gateway.qwenwork.cn</b></div>
+            <div class="kv" style="margin-top:12px">实测：prod 主栈 <b>没有</b> <span class="mono">daily-credit-notice/claim</span> 路由（404 page not found），
+              这个开关只在接口存在时才有动作。</div>
+          </div>
+          <div class="card" style="grid-column:span 2">
+            <div class="spread">
+              <div><div class="k" style="margin:0"><span class="ic">◔</span>模型可用性</div>
+                <div class="s">逐个真实打一条，记录套餐是否放行</div></div>
+              <button class="btn" id="btnHealth">全部自检</button>
+            </div>
+            <div class="table-wrap" style="margin-top:10px">
+              <table><thead><tr><th>模型</th><th>档位</th><th>状态</th><th class="num">耗时</th><th>说明</th></tr></thead>
+              <tbody id="healthRows"></tbody></table>
+            </div>
           </div>
           <div class="card">
             <div class="k" style="margin:0"><span class="ic">▦</span>运行信息</div>
@@ -654,9 +666,32 @@ function renderLogs() {
 }
 
 /* ---------- 设置 ---------- */
+async function loadHealth() {
+  try {
+    const h = await api('models/health');
+    const health = h.health || {};
+    const names = Object.keys(health);
+    $('#healthRows').innerHTML = names.length ? names.map(n => {
+      const x = health[n];
+      return `<tr><td class="mono">${esc(n)}</td><td class="dim">${esc(x.upstream || '')}</td>
+        <td>${x.ok ? '<span class="badge ok">可用</span>' : '<span class="badge bad">不可用</span>'}</td>
+        <td class="num">${x.ms ? ms(x.ms) : '—'}</td>
+        <td class="dim">${esc(String(x.error || '').slice(0, 46))}</td></tr>`;
+    }).join('') : '<tr><td colspan="5"><div class="empty">还没自检过，点右上角「全部自检」</div></td></tr>';
+  } catch (e) { if (e.message !== 'unauthorized') toast(e.message) }
+}
+$('#btnHealth').onclick = async () => {
+  $('#btnHealth').disabled = true;
+  toast('逐个模型试跑中，约 20–40 秒…');
+  try { const r = await api('models/health', { method: 'POST' }); await loadHealth(); toast(`自检完成：${(r.results || []).filter(x => x.ok).length}/${(r.results || []).length} 可用`) }
+  catch (e) { toast('自检失败：' + e.message) }
+  finally { $('#btnHealth').disabled = false }
+};
+
 async function loadSettings() {
   try {
     const s = await api('settings');
+    loadHealth();
     S.settings = s.settings;
     $('#claimState').innerHTML = s.settings.claimEnabled
       ? '<span class="badge ok">已开启</span> 每小时巡检，每号每天一次'

@@ -620,6 +620,76 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { ok: true, settings: { claimEnabled: state.settings.claimEnabled !== false } })
       }
 
+      if (action === 'models/health' && req.method === 'GET') {
+        return json(res, 200, { health: state.modelHealth || {} })
+      }
+      if (action === 'models/health' && req.method === 'POST') {
+        // 逐个模型真实打一条，记录可用性与耗时（套餐不含的会回 Model is not available for this user）
+        const rt = runtimeInfo()
+        if (!rt.ok) return json(res, 400, { error: rt.error })
+        const names = Object.keys(PUBLIC_MODELS)
+        const health = { ...(state.modelHealth || {}) }
+        const out = []
+        for (const name of names) {
+          const hit = resolveModel(name)
+          const acc = pickAccount()
+          if (!hit || !acc) { out.push({ model: name, ok: false, error: 'no account' }); continue }
+          const t0 = Date.now()
+          try {
+            const up = await chatResponse(
+              { model: hit.upstream, messages: [{ role: 'user', content: 'ping' }], max_tokens: 16, stream: false },
+              acc, rt, { signer: prepareQwenworkInfer })
+            const raw = await up.text()
+            let msg = raw
+            try { const j = JSON.parse(raw); msg = j?.choices?.[0]?.message?.content ?? j?.error?.message ?? raw } catch {}
+            const ok = up.status === 200
+            health[name] = { ok, upstream: hit.upstream, status: up.status, ms: Date.now() - t0, at: Date.now(), error: ok ? '' : String(msg).slice(0, 120) }
+          } catch (e) {
+            health[name] = { ok: false, status: 0, ms: Date.now() - t0, at: Date.now(), error: redact(e.message || String(e)).slice(0, 120) }
+          }
+          out.push({ model: name, ...health[name] })
+        }
+        state.modelHealth = health
+        saveState()
+        return json(res, 200, { ok: true, results: out })
+      }
+
+      if (action === 'import' && req.method === 'POST') {
+        // 从本机客户端 / 手工粘贴导入账号：只要 access(+refresh) 就够，自带 uid/email 可选
+        const body = await readBody(req)
+        const access = String(body.access || '').trim()
+        if (!access) return json(res, 400, { error: '缺少 access token' })
+        let uid = String(body.uid || '').trim()
+        if (!uid) {
+          try {
+            const payload = JSON.parse(Buffer.from(access.split('.')[1], 'base64url').toString('utf8'))
+            uid = payload.user_id || payload.sub || ''
+          } catch {}
+        }
+        if (!uid) return json(res, 400, { error: '无法确定 uid（token 不是 JWT？）' })
+        const rt = runtimeInfo()
+        if (!rt.ok) return json(res, 400, { error: rt.error })
+        const existing = state.accounts.find(a => a.uid === uid)
+        const acc = existing || {
+          id: randomUUID(), uid,
+          email: body.email || `phone_${uid}@phone.local`,
+          name: body.name || '', plan: body.plan || '',
+          createdAt: Date.now(), quota: {}, status: 'ok',
+        }
+        acc.access = access
+        if (body.refresh) acc.refresh = String(body.refresh)
+        try {
+          const payload = JSON.parse(Buffer.from(access.split('.')[1], 'base64url').toString('utf8'))
+          if (payload.exp) acc.accessExpires = payload.exp * 1000
+        } catch {}
+        if (!existing) state.accounts.push(acc)
+        ensureDevice(acc)
+        await refreshAccount(acc, { force: true }).catch(() => null)
+        saveState()
+        log({ type: 'import', account: acc.email, ok: true })
+        return json(res, 200, { ok: true, account: publicAccount(acc) })
+      }
+
       if (action === 'test' && req.method === 'POST') {
         // 后台「试跑」：非流式打一条，回耗时与正文，用来验证新档位能否出字
         const { model = 'qwen3.8max', prompt = '用一句话介绍你自己' } = await readBody(req)
