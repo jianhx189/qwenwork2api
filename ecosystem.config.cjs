@@ -1,22 +1,21 @@
 module.exports = {
   apps: [{
-    name: 'qwenwork-gateway',
+    name: 'qwenwork2api',
     script: 'server.mjs',
-    cwd: '/vol5/1000/qwenwork-gateway',
-    interpreter: '/vol5/1000/nodejs/bin/node',
+    cwd: __dirname,
     node_args: '--enable-source-maps',
     env: {
       PORT: '4021',
       NODE_ENV: 'production',
       TZ: 'Asia/Shanghai',
+      // 伪装用的客户端版本；官方客户端升级后按 resources/package.json 同步
+      QWENWORK_CLIENT_VERSION: '1.3.2',
+      QWENWORK_RELEASE_VERSION: '1.3.2-26101704',
       REFRESH_MS: '600000'
     },
     autorestart: true,
     max_restarts: 20,
     restart_delay: 3000,
-    out_file: '/vol5/1000/qwenwork-gateway/data/out.log',
-    error_file: '/vol5/1000/qwenwork-gateway/data/err.log',
-    merge_logs: true,
     time: true
   }]
 }

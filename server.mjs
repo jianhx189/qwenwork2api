@@ -19,8 +19,27 @@ const LOG_FILE = path.join(DATA, 'logs.jsonl')
 const WASM_FILE = process.env.QWENWORK_WASM_PATH || path.join(ROOT, 'qoder_auth_wasm_bg.wasm')
 const PORT = Number(process.env.PORT || 4021)
 
-// 对外只暴露一个模型名；内部映射到千问办公的「高级」档
-const PUBLIC_MODELS = { 'qwen3.8max': 'qwork-advanced' }
+// 对外模型名 → 千问办公档位。老名字（qwen3.8max / qwen3.8）保留兼容，
+// 新增档位按官方客户端的 modelSelector 枚举逐个映射。
+const PUBLIC_MODELS = {
+  'qwen3.8max': 'qwork-advanced',      // 兼容旧调用
+  'qwen3.8': 'qwork-advanced',         // 别名
+  'qwenwork-lite': 'qwork-lite',
+  'qwenwork-standard': 'qwork-auto',
+  'qwenwork-advanced': 'qwork-advanced',
+  'qwenwork-ultimate': 'qwork-ultimate',
+  'qwenwork-enterprise': 'safety',
+  'qwen3.7-max': 'qmodel_latest',
+  'qwen3.6-plus': 'q35model_preview',
+}
+// 大小写不敏感解析：上游调用常用 Qwen3.8-Max 这种写法
+const PUBLIC_LOWER = new Map(Object.keys(PUBLIC_MODELS).map(k => [k.toLowerCase(), k]))
+function resolveModel(name) {
+  if (!name || typeof name !== 'string') return null
+  if (PUBLIC_MODELS[name]) return { publicModel: name, upstream: PUBLIC_MODELS[name] }
+  const hit = PUBLIC_LOWER.get(name.trim().toLowerCase())
+  return hit ? { publicModel: hit, upstream: PUBLIC_MODELS[hit] } : null
+}
 
 mkdirSync(DATA, { recursive: true })
 
@@ -205,11 +224,11 @@ async function serveOnce(res, key, body, rt, acc, publicModel, upstreamModel, st
 
 async function handleChat(req, res, key) {
   let body = await readBody(req)
-  const upstreamModel = PUBLIC_MODELS[body?.model]
-  if (!upstreamModel) {
+  const hit = resolveModel(body?.model)
+  if (!hit) {
     return json(res, 400, { error: { message: `模型 ${body?.model} 不存在，可用模型：${Object.keys(PUBLIC_MODELS).join(', ')}`, type: 'invalid_request_error' } })
   }
-  const publicModel = body.model
+  const { publicModel, upstream: upstreamModel } = hit
   body = { ...body, model: upstreamModel }
   const rt = runtimeInfo()
   if (!rt.ok) return json(res, 503, { error: { message: rt.error, type: 'provider_unavailable' } })
@@ -347,6 +366,12 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { key, item: { ...item, key: item.key } })
       }
 
+      if (action === 'keys/full' && req.method === 'GET') {
+        const k = state.keys.find(x => x.id === url.searchParams.get('id'))
+        if (!k) return json(res, 404, { error: '令牌不存在' })
+        return json(res, 200, { key: k.key })
+      }
+
       if (action === 'keys/delete' && req.method === 'POST') {
         const { id } = await readBody(req)
         state.keys = state.keys.filter(k => k.id !== id)
@@ -370,8 +395,9 @@ const server = http.createServer(async (req, res) => {
           const t = hourStart - i * 3600000
           buckets.set(t, { t, n: 0, err: 0, ms: 0 })
         }
-        const byModel = new Map(), byAccount = new Map()
+        const byModel = new Map(), byAccount = new Map(), byModelToday = new Map()
         let total = 0, errors = 0, today = 0, todayErr = 0, msSum = 0, msN = 0
+        const lat = []
         const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0)
         if (existsSync(LOG_FILE)) {
           for (const line of readFileSync(LOG_FILE, 'utf8').split('\n')) {
@@ -381,26 +407,64 @@ const server = http.createServer(async (req, res) => {
             total++
             const isErr = l.type === 'chat_error'
             if (isErr) errors++
-            if (l.ms) { msSum += l.ms; msN++ }
+            if (l.ms) { msSum += l.ms; msN++; lat.push(l.ms) }
             if (l.ts >= dayStart.getTime()) { today++; if (isErr) todayErr++ }
             const b = buckets.get(l.ts - (l.ts % 3600000))
             if (b) { b.n++; if (isErr) b.err++; if (l.ms) b.ms += l.ms }
             const mk = l.model || 'unknown'
-            const cur = byModel.get(mk) || { model: mk, n: 0, err: 0 }
-            cur.n++; if (isErr) cur.err++; byModel.set(mk, cur)
+            const cur = byModel.get(mk) || { model: mk, n: 0, err: 0, msSum: 0, msN: 0 }
+            cur.n++; if (isErr) cur.err++
+            if (l.ms) { cur.msSum += l.ms; cur.msN++ }
+            byModel.set(mk, cur)
+            if (l.ts >= dayStart.getTime()) {
+              const tc = byModelToday.get(mk) || { model: mk, n: 0, err: 0 }
+              tc.n++; if (isErr) tc.err++
+              byModelToday.set(mk, tc)
+            }
             const ak = l.account || 'unknown'
             const ac = byAccount.get(ak) || { account: ak, n: 0, err: 0 }
-            ac.n++; if (isErr) ac.err++; byAccount.set(ak, ac)
+            ac.n++; if (isErr) ac.err++
+            byAccount.set(ak, ac)
           }
         }
+        lat.sort((a, b) => a - b)
+        const p95 = lat.length ? lat[Math.min(lat.length - 1, Math.floor(lat.length * 0.95))] : 0
         return json(res, 200, {
-          hourly: [...buckets.values()].sort((a, b) => a.t - b.t),
-          byModel: [...byModel.values()].sort((a, b) => b.n - a.n),
+          hourly: [...buckets.values()].sort((a, b) => a.t - b.t).map(b => ({ ...b, avgMs: b.n ? Math.round(b.ms / b.n) : 0 })),
+          byModel: [...byModel.values()].sort((a, b) => b.n - a.n).map(m => ({ model: m.model, n: m.n, err: m.err, avgMs: m.msN ? Math.round(m.msSum / m.msN) : 0 })),
+          byModelToday: [...byModelToday.values()].sort((a, b) => b.n - a.n),
           byAccount: [...byAccount.values()].sort((a, b) => b.n - a.n),
           total, errors, today, todayErr,
           avgMs: msN ? Math.round(msSum / msN) : 0,
-          successRate: total ? Number(((total - errors) / total).toFixed(3)) : 1,
+          p95Ms: p95,
+          successRate: total ? Number(((total - errors) / total).toFixed(4)) : 1,
         })
+      }
+
+      if (action === 'test' && req.method === 'POST') {
+        // 后台「试跑」：非流式打一条，回耗时与正文，用来验证新档位能否出字
+        const { model = 'qwen3.8max', prompt = '用一句话介绍你自己' } = await readBody(req)
+        const hit = resolveModel(model)
+        if (!hit) return json(res, 400, { error: '模型不存在' })
+        const rt = runtimeInfo()
+        if (!rt.ok) return json(res, 400, { error: rt.error })
+        const acc = pickAccount()
+        if (!acc) return json(res, 400, { error: '没有可用账号，请先授权' })
+        const t0 = Date.now()
+        try {
+          const up = await chatResponse(
+            { model: hit.upstream, messages: [{ role: 'user', content: String(prompt).slice(0, 2000) }], max_tokens: 128, stream: false },
+            acc, rt, { signer: prepareQwenworkInfer })
+          const raw = await up.text()
+          let out = raw
+          try {
+            const j = JSON.parse(raw)
+            out = j?.choices?.[0]?.message?.content ?? j?.error?.message ?? raw
+          } catch {}
+          return json(res, 200, { ok: up.status === 200, status: up.status, model: hit.publicModel, upstream: hit.upstream, ms: Date.now() - t0, text: String(out).slice(0, 600) })
+        } catch (e) {
+          return json(res, 200, { ok: false, model: hit.publicModel, upstream: hit.upstream, ms: Date.now() - t0, error: redact(e.message || String(e)) })
+        }
       }
 
       return json(res, 404, { error: 'not found' })
@@ -415,6 +479,8 @@ const server = http.createServer(async (req, res) => {
         data: Object.entries(PUBLIC_MODELS).map(([id, upstream]) => ({
           id, object: 'model', created: 0, owned_by: 'qwenwork',
           name: MODELS[upstream]?.name ?? id,
+          context_length: MODELS[upstream]?.limit?.context ?? null,
+          max_output_tokens: MODELS[upstream]?.limit?.output ?? null,
         })),
       })
     }
@@ -440,9 +506,9 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   const rt = runtimeInfo()
-  console.log(`[qwenwork-gateway] listening :${PORT}`)
-  console.log(`[qwenwork-gateway] admin  http://127.0.0.1:${PORT}/admin?token=${ADMIN_TOKEN}`)
-  console.log(`[qwenwork-gateway] wasm   ${rt.ok ? 'OK ' + rt.sha256.slice(0, 16) + ' ' + rt.bytes + 'B' : 'MISSING ' + rt.error}`)
+  console.log(`[qwenwork2api] listening :${PORT}`)
+  console.log(`[qwenwork2api] admin  http://127.0.0.1:${PORT}/admin?token=${ADMIN_TOKEN}`)
+  console.log(`[qwenwork2api] wasm   ${rt.ok ? 'OK ' + rt.sha256.slice(0, 16) + ' ' + rt.bytes + 'B' : 'MISSING ' + rt.error}`)
 })
 
 // 定时刷新余额（默认 10 分钟）
