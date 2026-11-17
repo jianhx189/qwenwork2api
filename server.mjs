@@ -11,7 +11,7 @@ import { startLogin, pollLogin, finishLogin, getAccount, renewAuth, quotaForMagp
 import { chatResponse } from './lib/chat.mjs'
 import { prepareQwenworkInfer } from './lib/wasm.mjs'
 import { deriveMachineId, deviceProfile, newSalt } from './lib/fingerprint.mjs'
-import { claimDaily, fetchBalance, today } from './lib/earn.mjs'
+import { claimDaily, fetchBalance, fetchWallets, today } from './lib/earn.mjs'
 import { ProviderError, errorResponse, redact } from './lib/errors.mjs'
 import { PanelAuth } from './lib/panelauth.mjs'
 
@@ -120,7 +120,7 @@ const publicAccount = a => ({
   organizationId: a.organizationId, status: a.status, quota: a.quota ?? null,
   createdAt: a.createdAt, lastRefresh: a.lastRefresh, accessExpires: a.accessExpires,
   refreshExpires: a.refreshExpires, hasRefresh: !!a.refresh,
-  claim: a.claim ?? null, balance: a.balance ?? null,
+  claim: a.claim ?? null, balance: a.balance ?? null, wallets: a.wallets ?? null,
   fingerprint: {
     machineId: a.machineId ? `${a.machineId.slice(0, 8)}…${a.machineId.slice(-4)}` : '',
     platform: a.device?.platform ?? '', arch: a.device?.arch ?? '',
@@ -154,8 +154,16 @@ function rotateFingerprint(acc) {
 async function claimAccount(acc, { force = false } = {}) {
   const day = today()
   if (!force && acc.claim?.date === day && acc.claim?.ok) return acc.claim
+  // 已知这个环境没有领取接口：别每小时白打一次上游，只在手动点（force）时再试
+  if (!force && acc.claim?.unsupported) return acc.claim
+
   const r = await claimDaily(acc)
-  acc.claim = { date: day, ok: r.ok, credits: r.credits, message: r.message, at: Date.now() }
+  acc.claim = {
+    date: day, ok: r.ok, credits: r.credits ?? null,
+    message: r.message, unsupported: r.unsupported === true || (force ? false : acc.claim?.unsupported === true && r.unsupported === true),
+    at: Date.now(),
+  }
+  if (r.unsupported) acc.claim.unsupported = true
   if (r.ok) {
     const bal = await fetchBalance(acc).catch(() => null)
     if (bal) acc.balance = bal
@@ -183,6 +191,11 @@ async function refreshAccount(acc, { force = false } = {}) {
   }
   acc.plan = ctx.plan?.name ?? acc.plan ?? ''
   acc.status = acc.quota.exceeded ? 'quota_exhausted' : 'ok'
+  // 余额与钱包：prod adapter 可用（/user/balance、/user/wallets），失败不影响刷新结果
+  const bal = await fetchBalance(acc).catch(() => null)
+  if (bal) acc.balance = bal
+  const ws = await fetchWallets(acc).catch(() => null)
+  if (ws) acc.wallets = ws
   acc.lastRefresh = now
   saveState()
   return acc

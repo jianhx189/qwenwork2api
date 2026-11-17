@@ -595,14 +595,18 @@ function renderAccounts() {
         <span class="badge ${a.status === 'ok' ? 'ok' : 'bad'}">${esc(a.status || '未知')}</span>
       </div>
       <div class="quota ${r < .15 ? 'low' : r < .4 ? 'mid' : ''}"><i style="width:${Math.max(1, r * 100)}%"></i></div>
-      <div class="kv" style="margin-top:6px"><b>${rem.toFixed(1)}</b> / ${tot || '—'} 分</div>
+      <div class="kv" style="margin-top:6px"><b>${rem != null ? rem.toFixed(1) : '—'}</b> / ${tot || '—'} 分
+        ${a.balance?.balance != null ? `<span class="dim">· 余额 ${a.balance.balance}</span>` : ''}</div>
+      ${(a.wallets || []).length ? `<div class="kv">钱包 ${a.wallets.map(w => `<b>${w.balance ?? '—'}</b>${w.validTo ? `<span class="dim">→${String(w.validTo).slice(5, 10)}</span>` : ''}`).join(' ')}</div>` : ''}
       <div class="kv" style="margin-top:10px">设备指纹 <b class="mono">${esc(fp.machineId || '—')}</b></div>
       <div class="kv">${esc(fp.platform || '—')} ${esc(fp.arch || '')} · 客户端 ${esc(fp.version || '—')}${fp.saltRot ? ` · 已换 ${fp.saltRot} 次` : ''}</div>
-      <div class="kv">每日领取 <b>${claim ? (claim.ok ? '已领' + (claim.credits != null ? ' +' + claim.credits : '') : '未领到') : '未领取'}</b>
+      <div class="kv">每日领取 ${claim?.unsupported
+        ? '<span class="badge">该环境无此接口</span>'
+        : `<b>${claim ? (claim.ok ? '已领' + (claim.credits != null ? ' +' + claim.credits : '') : '未领到') : '未领取'}</b>`}
         ${claim?.message ? `<span class="dim">· ${esc(String(claim.message)).slice(0, 46)}</span>` : ''}</div>
       <div class="kv">刷新于 ${a.lastRefresh ? ago(a.lastRefresh) : '—'}</div>
       <div class="rowflex" style="margin-top:12px">
-        <button class="btn" data-act="claim" data-id="${a.id}">领取积分</button>
+        <button class="btn" data-act="claim" data-id="${a.id}"${claim?.unsupported ? ' title="这个账号所在环境没有每日领取接口，点一次可以再确认"' : ''}>领取积分</button>
         <button class="btn" data-act="refresh" data-id="${a.id}">刷新余额</button>
         <button class="btn" data-act="fingerprint" data-id="${a.id}">换指纹</button>
         <button class="btn danger" data-act="delete" data-id="${a.id}">删除</button>
