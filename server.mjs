@@ -230,7 +230,8 @@ const STREAM_IDLE = Number(process.env.QW_STREAM_IDLE_MS || 60000)        // 流
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 function pickAccount(exclude = new Set()) {
-  const all = state.accounts.filter(a => a.status !== 'quota_exhausted' && a.access)
+  // claimOnly：daily 环境授权的号只能拿来领取，不能进聊天轮转（它的 token 在 prod 上无效）
+  const all = state.accounts.filter(a => a.status !== 'quota_exhausted' && a.access && !a.claimOnly)
   if (!all.length) return null
   // 优先选没试过的号；都试过（或只有一个号）时允许同号重试，不能直接放弃
   const fresh = all.filter(a => !exclude.has(a.id))
@@ -427,7 +428,10 @@ const server = http.createServer(async (req, res) => {
         }
         Object.assign(acc, auth, { status: 'ok' })
         // daily 环境授权的号：领取要回 daily 打（prod 没有那条路由）
-        if (item.flow.origin && item.flow.origin !== 'https://gateway.qwenwork.cn') acc.claimOrigin = item.flow.origin
+        if (item.flow.origin && item.flow.origin !== 'https://gateway.qwenwork.cn') {
+          acc.claimOrigin = item.flow.origin
+          acc.claimOnly = true
+        }
         ensureDevice(acc)
         saveState()
         await refreshAccount(acc, { force: true }).catch(() => {})
