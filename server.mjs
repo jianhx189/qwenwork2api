@@ -356,6 +356,12 @@ const server = http.createServer(async (req, res) => {
   try {
     // 管理页
     if (p === '/admin' || p === '/admin/') {
+      const fresh = path.join(ROOT, 'panel.html')
+      const html = readFileSync(existsSync(fresh) ? fresh : path.join(ROOT, 'admin.html'))
+      return text(res, 200, html, 'text/html; charset=utf-8')
+    }
+    // 旧版面板保留一份入口
+    if (p === '/admin/legacy') {
       const html = readFileSync(path.join(ROOT, 'admin.html'))
       return text(res, 200, html, 'text/html; charset=utf-8')
     }

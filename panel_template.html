@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-ui="next">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>千问办公控制台</title>
+<style>
+/*__WB_CSS__*/
+</style>
+<style>
+#qwMain{padding:22px 26px 60px;max-width:1440px}
+.qw-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+@media (max-width:1100px){.qw-cards{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:860px){.qw-cards{grid-template-columns:repeat(2,1fr)}}
+.qw-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow-sm)}
+.qw-card .k{font-size:12px;color:var(--dim);margin-bottom:6px}
+.qw-card .v{font-size:24px;font-weight:650;color:var(--fg);font-variant-numeric:tabular-nums}
+.qw-card .s{font-size:11px;color:var(--dim-light);margin-top:4px}
+.qw-sec{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px;box-shadow:var(--shadow-sm)}
+.qw-sec h3{margin:0 0 4px;font-size:14px;color:var(--fg)}
+.qw-sec .sub{font-size:12px;color:var(--dim);margin-bottom:12px}
+.qw-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.qw-table th{text-align:left;padding:8px 10px;color:var(--dim);font-weight:500;border-bottom:1px solid var(--line);white-space:nowrap;font-size:12px}
+.qw-table td{padding:8px 10px;border-bottom:1px solid var(--line);color:var(--fg);vertical-align:middle}
+.qw-table tr:last-child td{border-bottom:none}
+.qw-table tr:hover td{background:var(--accent-soft)}
+.qw-tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:var(--panel2);color:var(--dim)}
+.qw-tag.ok{background:var(--accent2-soft);color:var(--accent2)}
+.qw-tag.bad{background:var(--bad-soft);color:var(--bad)}
+.qw-tag.new{background:var(--accent-soft);color:var(--accent)}
+.qw-btn{padding:6px 12px;font-size:12px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);cursor:pointer}
+.qw-btn:hover{border-color:var(--line-hover)}
+.qw-btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.qw-btn.danger{color:var(--bad)}
+.qw-btn.sm{padding:3px 8px;font-size:11px}
+.qw-input,.qw-select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 11px;color:var(--fg);font:inherit;font-size:12.5px;outline:none}
+.qw-input:focus{border-color:var(--accent)}
+.qw-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.qw-mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11.5px}
+.qw-muted{color:var(--dim)}
+.qw-empty{padding:26px;text-align:center;color:var(--dim-light);font-size:12.5px}
+.qw-code{background:var(--terminal-bg);color:var(--terminal-fg);border-radius:8px;padding:12px 14px;font-family:ui-monospace,Consolas,monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;line-height:1.6}
+.qw-bar{height:7px;background:var(--panel3);border-radius:4px;overflow:hidden;min-width:70px}
+.qw-bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.qw-flex{display:flex;gap:8px;align-items:center}
+.qw-log{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;line-height:1.75}
+.qw-log .t{color:var(--dim-light)}
+.qw-toast{position:fixed;right:22px;bottom:22px;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:9px;font-size:12.5px;z-index:99;max-width:420px;box-shadow:0 6px 24px rgba(0,0,0,.2)}
+.qw-modal-mask{position:fixed;inset:0;background:var(--overlay-mask);display:flex;align-items:center;justify-content:center;z-index:80}
+.qw-modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:520px;max-width:94vw;max-height:86vh;overflow:auto;padding:20px 22px}
+.qw-modal h3{margin:0 0 12px;font-size:15px}
+.qw-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.qw-tabs button{padding:5px 12px;border-radius:16px;border:1px solid var(--line);background:transparent;color:var(--dim);font-size:12px;cursor:pointer}
+.qw-tabs button.on{background:var(--accent-selected-bg);border-color:var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+<div id="loginMask" class="qw-modal-mask" style="display:none">
+  <div class="qw-modal" style="width:340px;text-align:center">
+    <div class="next-brand" style="justify-content:center;margin-bottom:14px">
+      <div class="next-brand-mark">千</div>
+      <div class="next-brand-text"><b>千问办公</b><span>gateway console</span></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--dim);margin-bottom:12px">请输入面板访问密码</div>
+    <input id="pwd" class="qw-input" type="password" placeholder="面板密码" style="width:100%;box-sizing:border-box"
+           onkeydown="if(event.key==='Enter')doLogin()">
+    <label style="display:flex;gap:7px;align-items:center;font-size:12px;color:var(--dim);margin:10px 0">
+      <input id="remember" type="checkbox" checked> 保持登录
+    </label>
+    <div id="loginMsg" style="font-size:12px;color:var(--bad);min-height:18px;margin-bottom:8px"></div>
+    <button class="qw-btn primary" style="width:100%;padding:9px" onclick="doLogin()">进入面板</button>
+  </div>
+</div>
+
+<div id="nextShell" style="display:none">
+  <aside id="nextSidebar">
+    <div class="next-brand">
+      <div class="next-brand-mark">千</div>
+      <div class="next-brand-text"><b>千问办公</b><span>gateway console</span></div>
+    </div>
+    <div class="next-nav-label">工作台</div>
+    <nav class="next-nav" id="nav"></nav>
+    <div class="next-sidebar-foot">
+      <a class="next-side-link" href="https://github.com/jianhx189/qwenwork2api" target="_blank" rel="noopener">项目仓库</a>
+      <div class="next-side-status"><span class="next-status-dot"></span><span>网关运行中</span></div>
+    </div>
+  </aside>
+  <div class="next-sidebar-backdrop" id="nextSidebarBackdrop" onclick="toggleSidebar(false)"></div>
+  <div id="nextMain">
+    <div id="nextTopbar">
+      <div class="next-topbar-left">
+        <button class="next-menu-btn" type="button" onclick="toggleSidebar()" aria-label="菜单">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <div class="next-page-heading">
+          <div id="nextPageTitle">总览</div>
+          <div id="nextPageDesc">出口、账号健康和最近请求一屏看完。</div>
+        </div>
+      </div>
+      <div class="next-topbar-actions">
+        <span class="next-pill"><span class="next-status-dot"></span><span>千问办公</span></span>
+        <button class="qw-btn sm" onclick="loadAll()">刷新</button>
+        <button class="qw-btn sm" onclick="logout()">退出</button>
+      </div>
+    </div>
+    <div id="nextContent">
+      <main id="qwMain"><div class="qw-empty">加载中…</div></main>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let TOKEN = localStorage.getItem('qw_token') || '';
+let TAB = 'overview';
+let STATE = null;
+
+const PAGES = [
+  ['overview', '总览', '出口、账号健康和最近请求一屏看完。'],
+  ['gateway', '网关', '接入地址、API Key 和模型目录。'],
+  ['accounts', '账号', '账号池、积分余额和授权登录。'],
+  ['usage', '用量', '按日、按模型、按 Key 的调用统计。'],
+  ['settings', '设置', '面板密码与网关信息。'],
+  ['logs', '日志', '网关运行日志。'],
+];
+const ICONS = {
+  overview: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  gateway: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z"/>',
+  accounts: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.4-3.2 2.4-5 5.5-5s5.1 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.5c2.7.2 4.3 1.8 4.8 4.5"/>',
+  usage: '<path d="M4 19V5M4 19h16"/><path d="M7 15l3.5-4 3 2.5L20 7"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  logs: '<path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/>',
+};
+
+function esc(s){return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(msg, bad){const d=document.createElement('div');d.className='qw-toast';if(bad)d.style.background='var(--bad)';d.textContent=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),3600)}
+function fmt(n){return Number(n||0).toLocaleString('zh-CN')}
+function shortName(a){
+  const m = String(a.email||'').match(/^phone_([0-9a-f-]{8})/i);
+  if (m) return '账号 ' + m[1].slice(0,8);
+  return a.email || (a.uid||'').slice(0,8) || '—';
+}
+function ago(ts){if(!ts)return '—';const s=(Date.now()-ts)/1000;if(s<60)return Math.floor(s)+' 秒前';if(s<3600)return Math.floor(s/60)+' 分钟前';if(s<86400)return Math.floor(s/3600)+' 小时前';return Math.floor(s/86400)+' 天前'}
+
+async function api(action, body, method){
+  const opt = {method: method || (body ? 'POST' : 'GET'), headers:{}};
+  if (TOKEN) opt.headers['Authorization'] = 'Bearer ' + TOKEN;
+  if (body) { opt.headers['Content-Type']='application/json'; opt.body = JSON.stringify(body); }
+  const r = await fetch('/admin/api/' + action, opt);
+  const j = await r.json().catch(()=>({}));
+  if (r.status === 401) { showLogin(); throw new Error('未登录'); }
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+
+function toggleSidebar(force){
+  const on = typeof force === 'boolean' ? force : !document.body.classList.contains('next-sidebar-open');
+  document.body.classList.toggle('next-sidebar-open', on);
+}
+function showLogin(){ $('#loginMask').style.display='flex'; $('#nextShell').style.display='none'; }
+function showShell(){ $('#loginMask').style.display='none'; $('#nextShell').style.display=''; }
+
+async function doLogin(){
+  const pwd = $('#pwd').value;
+  try {
+    const r = await api('login', {password: pwd});
+    TOKEN = r.token;
+    if ($('#remember').checked) localStorage.setItem('qw_token', TOKEN); else sessionStorage.setItem('qw_token', TOKEN);
+    showShell(); renderNav(); await go('overview');
+  } catch(e){ $('#loginMsg').textContent = e.message; }
+}
+async function logout(){ try{ await api('logout', {}); }catch{} TOKEN=''; localStorage.removeItem('qw_token'); location.reload(); }
+
+function renderNav(){
+  $('#nav').innerHTML = PAGES.map(([id, name]) => `
+    <button type="button" class="next-nav-item ${id===TAB?'active':''}" data-tab="${id}" onclick="go('${id}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${ICONS[id]}</svg><span>${name}</span>
+    </button>`).join('');
+}
+
+async function go(tab){
+  TAB = tab;
+  const meta = PAGES.find(p=>p[0]===tab);
+  $('#nextPageTitle').textContent = meta[1];
+  $('#nextPageDesc').textContent = meta[2];
+  renderNav();
+  $('#qwMain').innerHTML = '<div class="qw-empty">加载中…</div>';
+  try { await ({overview:renderOverview, gateway:renderGateway, accounts:renderAccounts, usage:renderUsage, settings:renderSettings, logs:renderLogs})[tab](); }
+  catch(e){ $('#qwMain').innerHTML = `<div class="qw-empty">加载失败：${esc(e.message)}</div>`; }
+}
+async function loadAll(){ await go(TAB); }
+
+/* ---------------- 总览 ---------------- */
+async function renderOverview(){
+  const [st, stats] = await Promise.all([api('state'), api('stats')]);
+  STATE = st;
+  const a = st.stats;
+  const usable = st.stats.usable;
+  $('#qwMain').innerHTML = `
+    <div class="qw-cards">
+      ${card('账号池', fmt(a.accounts) + ' 个', usable + ' 个可用')}
+      ${card('剩余积分', fmt(Math.round(a.remaining)), '全部账号合计')}
+      ${card('API Key', fmt(st.keys.length) + ' 个', st.keys.filter(k=>!k.disabled).length + ' 个生效')}
+      ${card('模型', fmt(st.models.length) + ' 个', '公开目录')}
+      ${card('今日请求', fmt(stats.today), '失败 ' + fmt(stats.todayErr))}
+      ${card('累计请求', fmt(stats.total), '共 ' + fmt(stats.byModel.length) + ' 个模型')}
+      ${card('成功率', (stats.successRate*100).toFixed(1) + '%', '累计失败 ' + fmt(stats.errors))}
+      ${card('平均耗时', fmt(stats.avgMs) + ' ms', 'P95 ' + fmt(stats.p95Ms) + ' ms')}
+    </div>
+    <div class="qw-sec">
+      <h3>账号健康</h3><div class="sub">积分余额与状态</div>
+      <div class="table-wrap"><table class="qw-table"><thead><tr>
+        <th>账号</th><th>剩余积分</th><th>状态</th><th>最近刷新</th></tr></thead><tbody>
+        ${st.accounts.length ? st.accounts.map(x=>`<tr>
+          <td>${esc(shortName(x))}</td>
+          <td>${fmt(Math.round(x.quota?.remaining ?? 0))}</td>
+          <td>${x.status==='ok'?'<span class="qw-tag ok">正常</span>':'<span class="qw-tag bad">'+esc(x.status)+'</span>'}</td>
+          <td class="qw-muted">${ago(x.lastRefresh)}</td></tr>`).join('') : empty(4,'还没有账号')}
+      </tbody></table></div>
+    </div>
+    <div class="qw-sec">
+      <h3>按模型调用</h3><div class="sub">累计请求数与平均耗时</div>
+      <div class="table-wrap"><table class="qw-table"><thead><tr><th>模型</th><th>请求数</th><th>失败</th><th>平均耗时</th></tr></thead><tbody>
+      ${stats.byModel.length ? stats.byModel.slice(0,12).map(m=>`<tr><td class="qw-mono">${esc(m.model)}</td><td>${fmt(m.n)}</td><td>${m.err?'<span class="qw-tag bad">'+m.err+'</span>':'0'}</td><td class="qw-muted">${fmt(m.avgMs)} ms</td></tr>`).join('') : empty(4,'暂无调用')}
+      </tbody></table></div>
+    </div>`;
+}
+function card(k, v, s){ return `<div class="qw-card"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s||''}</div></div>` }
+function empty(n, t){ return `<tr><td colspan="${n}" class="qw-empty">${t}</td></tr>` }
+
+/* ---------------- 网关 ---------------- */
+async function renderGateway(){
+  const st = await api('state');
+  STATE = st;
+  const base = location.origin + '/v1';
+  $('#qwMain').innerHTML = `
+    <div class="qw-sec">
+      <h3>接入信息</h3><div class="sub">OpenAI 兼容协议，任何支持自定义 base_url 的客户端都能接</div>
+      <div class="qw-code">Base URL   ${base}
+模型示例   qwen3.8max / deepseek-v4.1-flash / glm-5.3-flash / kimi-k3.1-pro
+
+curl ${base}/chat/completions \\
+  -H "Authorization: Bearer sk-qw-..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"model":"qwen3.8max","messages":[{"role":"user","content":"你好"}]}'</div>
+    </div>
+    <div class="qw-sec">
+      <div class="qw-toolbar"><h3 style="margin:0">API Key</h3>
+        <button class="qw-btn primary sm" onclick="createKey()">新建 Key</button></div>
+      <div class="table-wrap"><table class="qw-table"><thead><tr>
+        <th>名称</th><th>Key</th><th>请求数</th><th>状态</th><th>操作</th></tr></thead><tbody id="keyRows">
+        ${st.keys.length ? st.keys.map(k=>`<tr>
+          <td>${esc(k.name)}</td><td class="qw-mono">${esc(k.key)}</td><td>${fmt(k.requests||0)}</td>
+          <td>${k.disabled?'<span class="qw-tag bad">已停用</span>':'<span class="qw-tag ok">生效中</span>'}</td>
+          <td class="qw-flex">
+            <button class="qw-btn sm" onclick="copyKey('${k.id}')">复制</button>
+            <button class="qw-btn sm" onclick="toggleKey('${k.id}',${!k.disabled})">${k.disabled?'启用':'停用'}</button>
+            <button class="qw-btn sm danger" onclick="delKey('${k.id}')">删除</button></td></tr>`).join('') : empty(5,'还没有 Key')}
+      </tbody></table></div>
+    </div>
+    <div class="qw-sec">
+      <h3>模型目录（${st.models.length} 个）</h3><div class="sub">客户端里写这些模型名即可</div>
+      <div class="table-wrap"><table class="qw-table"><thead><tr><th>模型 ID</th><th>显示名</th><th>上下文上限</th></tr></thead><tbody>
+      ${st.models.map(m=>`<tr><td class="qw-mono">${esc(m.id)}</td><td>${esc(m.name)}</td><td class="qw-muted">${m.limit?fmt(m.limit):'—'}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div>`;
+}
+async function createKey(){
+  const name = prompt('Key 名称', '新令牌');
+  if (name === null) return;
+  const r = await api('keys', {name});
+  await navigator.clipboard.writeText(r.key).catch(()=>{});
+  toast('已创建并复制：' + r.key.slice(0,14) + '…');
+  go('gateway');
+}
+async function copyKey(id){ const r = await api('keys/full?id='+id); await navigator.clipboard.writeText(r.key); toast('Key 已复制'); }
+async function toggleKey(id, disabled){ await api('keys', {id, disabled}); go('gateway'); }
+async function delKey(id){ if(!confirm('确定删除这个 Key？'))return; await api('keys/delete', {id}); go('gateway'); }
+
+/* ---------------- 账号 ---------------- */
+async function renderAccounts(){
+  const st = await api('state');
+  STATE = st;
+  $('#qwMain').innerHTML = `
+    <div class="qw-sec">
+      <div class="qw-toolbar">
+        <button class="qw-btn primary sm" onclick="addAccount()">授权登录</button>
+        <button class="qw-btn sm" onclick="importAccount()">粘贴 Token 导入</button>
+        <button class="qw-btn sm" onclick="bulk('refresh')">全部刷新余额</button>
+        <button class="qw-btn sm" onclick="bulk('claim')">全部领取积分</button>
+        <span class="qw-muted" style="font-size:12px">共 ${st.accounts.length} 个账号 · 剩余 ${fmt(Math.round(st.stats.remaining))} 分</span>
+      </div>
+      <div class="table-wrap"><table class="qw-table"><thead><tr>
+        <th>账号</th><th>UID</th><th>剩余积分</th><th>已用</th><th>状态</th><th>操作</th></tr></thead><tbody>
+        ${st.accounts.length ? st.accounts.map(a=>`<tr>
+          <td><div>${esc(shortName(a))}</div><div class="qw-muted" style="font-size:11px">${esc(a.plan || '千问办公')}</div></td>
+          <td class="qw-mono qw-muted">${esc((a.uid||'').slice(0,8))}…</td>
+          <td><b>${fmt(Math.round(a.quota?.remaining ?? 0))}</b></td>
+          <td class="qw-muted">${fmt(Math.round(a.quota?.used ?? 0))}</td>
+          <td>${a.status==='ok'?'<span class="qw-tag ok">正常</span>':'<span class="qw-tag bad">'+esc(a.status)+'</span>'}</td>
+          <td class="qw-flex">
+            <button class="qw-btn sm" onclick="accAct('account/refresh','${a.id}')">刷新</button>
+            <button class="qw-btn sm" onclick="accAct('account/claim','${a.id}')">领取</button>
+            <button class="qw-btn sm" onclick="accAct('account/fingerprint','${a.id}')">换指纹</button>
+            <button class="qw-btn sm danger" onclick="delAcc('${a.id}')">删除</button></td></tr>`).join('') : empty(6,'还没有账号，点上方「添加账号」')}
+      </tbody></table></div>
+    </div>
+    <div class="qw-sec" id="addSec" style="display:none">
+      <h3>添加账号</h3><div class="sub">打开授权链接完成登录，页面会自动检测并入库</div>
+      <div id="addBody"></div>
+    </div>`;
+}
+async function accAct(action, id){
+  try{ const r = await api(action, {id}); toast('完成'); go('accounts'); }
+  catch(e){ toast(e.message, true); }
+}
+async function delAcc(id){ if(!confirm('确定从池里删除这个账号？'))return; await api('account/delete',{id}); go('accounts'); }
+async function bulk(op){
+  toast('正在执行，账号多的话需要一两分钟…');
+  try{ const r = await api('bulk',{op}); const ok=r.results.filter(x=>x.ok).length; toast(`完成：${ok}/${r.results.length} 成功`); go('accounts'); }
+  catch(e){ toast(e.message,true); }
+}
+async function addAccount(){
+  $('#addSec').style.display='';
+  $('#addBody').innerHTML = '<div class="qw-empty">正在生成授权链接…</div>';
+  try{
+    const r = await api('login/start', {});
+    $('#addBody').innerHTML = `
+      <div class="qw-code" style="margin-bottom:12px">${esc(r.url)}</div>
+      <div class="qw-flex">
+        <button class="qw-btn sm" onclick="navigator.clipboard.writeText('${r.url}');toast('链接已复制')">复制链接</button>
+        <a class="qw-btn sm primary" href="${esc(r.url)}" target="_blank">打开授权页</a>
+        <span class="qw-muted" id="pollMsg" style="font-size:12px">等待授权…（5 分钟内有效）</span>
+      </div>`;
+    const t0 = Date.now();
+    const timer = setInterval(async ()=>{
+      if (Date.now()-t0 > 300000){ clearInterval(timer); $('#pollMsg').textContent='授权超时，请重新生成'; return; }
+      try{
+        const p = await api('login/poll?flowId=' + r.flowId);
+        if (p.status === 'ok'){ clearInterval(timer); toast('账号已添加'); go('accounts'); }
+      }catch(e){ clearInterval(timer); $('#pollMsg').textContent = e.message; }
+    }, 3000);
+  }catch(e){ $('#addBody').innerHTML = `<div class="qw-empty">${esc(e.message)}</div>`; }
+}
+
+async function importAccount(){
+  const mask = document.createElement('div');
+  mask.className = 'qw-modal-mask';
+  mask.innerHTML = `<div class="qw-modal">
+    <h3>粘贴 Token 导入</h3>
+    <div class="qw-muted" style="font-size:12px;margin-bottom:10px">从客户端抓到的 access token 贴进来即可，uid 会自动解析</div>
+    <textarea id="impTok" class="qw-input" style="width:100%;height:110px;box-sizing:border-box;font-family:ui-monospace,Consolas,monospace;font-size:11.5px" placeholder="eyJhbGciOi..."></textarea>
+    <div class="qw-flex" style="margin-top:12px;justify-content:flex-end">
+      <button class="qw-btn sm" onclick="this.closest('.qw-modal-mask').remove()">取消</button>
+      <button class="qw-btn sm primary" onclick="doImport(this)">导入</button>
+    </div></div>`;
+  document.body.appendChild(mask);
+}
+async function doImport(btn){
+  const tok = document.getElementById('impTok').value.trim();
+  if (!tok) return toast('请先粘贴 token', true);
+  btn.disabled = true; btn.textContent = '导入中…';
+  try{
+    const r = await api('import', {access: tok});
+    toast('已导入：' + (r.account?.email || ''));
+    document.querySelector('.qw-modal-mask')?.remove();
+    go('accounts');
+  }catch(e){ toast(e.message, true); btn.disabled=false; btn.textContent='导入'; }
+}
+
+/* ---------------- 用量 ---------------- */
+async function renderUsage(days){
+  days = days || 7;
+  const u = await api('usage?days=' + days);
+  $('#qwMain').innerHTML = `
+    <div class="qw-tabs">${[7,14,30].map(d=>`<button class="${d===days?'on':''}" onclick="renderUsage(${d})">近 ${d} 天</button>`).join('')}</div>
+    <div class="qw-cards">
+      ${card('请求总数', fmt(u.total), '近 ' + days + ' 天')}
+      ${card('失败请求', fmt(u.errors ?? u.errs ?? 0), '成功率 ' + (u.total ? ((1-(u.errors||0)/u.total)*100).toFixed(1) : '100.0') + '%')}
+      ${card('平均耗时', fmt(u.avgMs) + ' ms', '按天统计见下')}
+    </div>
+    <div class="qw-sec"><h3>按日</h3><div class="sub">每天的请求与 token</div>
+      <div class="table-wrap"><table class="qw-table"><thead><tr><th>日期</th><th>请求数</th><th>失败</th><th>平均耗时</th><th>占比</th></tr></thead><tbody>
+      ${(u.byDay||[]).length ? u.byDay.map(d=>{
+        const max = Math.max(...u.byDay.map(x=>x.n),1);
+        return `<tr><td>${esc(d.day)}</td><td>${fmt(d.n)}</td><td>${d.err||0}</td><td class="qw-muted">${d.n?fmt(Math.round((d.msSum||0)/d.n))+' ms':'—'}</td>
+        <td><div class="qw-bar"><i style="width:${Math.round(d.n/max*100)}%"></i></div></td></tr>`}).join('') : empty(5,'暂无数据')}
+      </tbody></table></div></div>
+    <div class="qw-sec"><h3>按模型</h3><div class="sub">调用分布</div>
+      <div class="table-wrap"><table class="qw-table"><thead><tr><th>模型</th><th>请求数</th><th>失败</th><th>占比</th></tr></thead><tbody>
+      ${(u.byModel||[]).map(m=>`<tr><td class="qw-mono">${esc(m.model)}</td><td>${fmt(m.n)}</td><td>${m.err||0}</td><td class="qw-muted">${u.total?((m.n/u.total*100).toFixed(1)+'%'):'—'}</td></tr>`).join('') || empty(4,'暂无数据')}
+      </tbody></table></div></div>`;
+}
+
+/* ---------------- 设置 ---------------- */
+async function renderSettings(){
+  const st = await api('state');
+  $('#qwMain').innerHTML = `
+    <div class="qw-sec"><h3>面板密码</h3><div class="sub">修改后立即生效，旧会话全部失效</div>
+      <div style="display:grid;gap:10px;max-width:340px">
+        <input id="curPwd" class="qw-input" type="password" placeholder="当前密码">
+        <input id="newPwd" class="qw-input" type="password" placeholder="新密码（至少 6 位）">
+        <button class="qw-btn primary" onclick="changePwd()">修改密码</button>
+      </div></div>
+    <div class="qw-sec"><h3>网关信息</h3><div class="sub">运行状态</div>
+      <table class="qw-table"><tbody>
+        <tr><td style="width:160px" class="qw-muted">账号数</td><td>${st.stats.accounts}</td></tr>
+        <tr><td class="qw-muted">模型数</td><td>${st.models.length}</td></tr>
+        <tr><td class="qw-muted">API Key</td><td>${st.keys.length}</td></tr>
+        <tr><td class="qw-muted">剩余积分</td><td>${fmt(Math.round(st.stats.remaining))}</td></tr>
+        <tr><td class="qw-muted">运行时</td><td class="qw-mono">${st.runtime?.ok ? 'WASM 就绪' : esc(st.runtime?.error || '未知')}</td></tr>
+      </tbody></table></div>
+    <div class="qw-sec"><h3>模型自检</h3><div class="sub">逐个模型打一条真实请求，检查可用性（会消耗少量积分）</div>
+      <button class="qw-btn" onclick="modelHealth()">开始自检</button>
+      <div id="healthOut" style="margin-top:12px"></div></div>`;
+}
+async function changePwd(){
+  try{
+    const r = await api('password', {current:$('#curPwd').value, next:$('#newPwd').value});
+    TOKEN = r.token; localStorage.setItem('qw_token', TOKEN);
+    toast('密码已修改');
+  }catch(e){ toast(e.message, true); }
+}
+async function modelHealth(){
+  $('#healthOut').innerHTML = '<div class="qw-empty">自检中，21 个模型大约需要一分钟…</div>';
+  try{
+    const r = await api('models/health', {});
+    const rows = r.results || [];
+    $('#healthOut').innerHTML = `<div class="table-wrap"><table class="qw-table"><thead><tr><th>模型</th><th>结果</th><th>耗时</th></tr></thead><tbody>
+      ${rows.map(m=>`<tr><td class="qw-mono">${esc(m.model||m.id)}</td><td>${m.ok?'<span class="qw-tag ok">可用</span>':'<span class="qw-tag bad">'+esc(m.error||'失败')+'</span>'}</td><td class="qw-muted">${fmt(m.ms)} ms</td></tr>`).join('')}
+      </tbody></table></div>`;
+  }catch(e){ $('#healthOut').innerHTML = `<div class="qw-empty">${esc(e.message)}</div>`; }
+}
+
+/* ---------------- 日志 ---------------- */
+async function renderLogs(){
+  const r = await api('logs?n=200');
+  $('#qwMain').innerHTML = `
+    <div class="qw-sec"><div class="qw-toolbar"><h3 style="margin:0">运行日志</h3>
+      <button class="qw-btn sm" onclick="renderLogs()">刷新</button>
+      <span class="qw-muted" style="font-size:12px">最近 ${r.logs.length} 条</span></div>
+      <div class="qw-code qw-log" style="max-height:64vh;overflow:auto">${r.logs.length ? r.logs.map(l=>{
+        const ts = l.ts ? new Date(l.ts).toLocaleString('zh-CN',{hour12:false}) : '';
+        return `<div><span class="t">${ts}</span>  ${esc(l.type||'')}  ${esc(l.model||l.account||'')}  ${esc(l.error||l.msg||'')} ${l.ms?fmt(l.ms)+'ms':''}</div>`;
+      }).join('') : '暂无日志'}</div></div>`;
+}
+
+/* ---------------- 启动 ---------------- */
+(async function(){
+  if (!TOKEN) return showLogin();
+  try { const s = await api('session'); if (!s.ok) return showLogin(); }
+  catch { return showLogin(); }
+  showShell(); renderNav(); await go('overview');
+  setInterval(()=>{ if (TAB==='overview') go('overview'); }, 30000);
+})();
+</script>
+</body>
+</html>
