@@ -2438,6 +2438,7 @@ const ICONS = {
 function esc(s){return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toast(msg, bad){const d=document.createElement('div');d.className='qw-toast';if(bad)d.style.background='var(--bad)';d.textContent=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),3600)}
 function fmt(n){return Number(n||0).toLocaleString('zh-CN')}
+function qfmt(n){n=Number(n||0);return n>=100?fmt(Math.round(n)):n.toFixed(2)}
 function shortName(a){
   const m = String(a.email||'').match(/^phone_([0-9a-f-]{8})/i);
   if (m) return '账号 ' + m[1].slice(0,8);
@@ -2502,7 +2503,7 @@ async function renderOverview(){
   $('#qwMain').innerHTML = `
     <div class="qw-cards">
       ${card('账号池', fmt(a.accounts) + ' 个', usable + ' 个可用')}
-      ${card('剩余积分', fmt(Math.round(a.remaining)), '全部账号合计')}
+      ${card('剩余积分', qfmt(a.remaining), '全部账号合计')}
       ${card('API Key', fmt(st.keys.length) + ' 个', st.keys.filter(k=>!k.disabled).length + ' 个生效')}
       ${card('模型', fmt(st.models.length) + ' 个', '公开目录')}
       ${card('今日请求', fmt(stats.today), '失败 ' + fmt(stats.todayErr))}
@@ -2516,7 +2517,7 @@ async function renderOverview(){
         <th>账号</th><th>剩余积分</th><th>状态</th><th>最近刷新</th></tr></thead><tbody>
         ${st.accounts.length ? st.accounts.map(x=>`<tr>
           <td>${esc(shortName(x))}</td>
-          <td>${fmt(Math.round(x.quota?.remaining ?? 0))}</td>
+          <td>${qfmt(x.quota?.remaining ?? 0)}</td>
           <td>${x.status==='ok'?'<span class="qw-tag ok">正常</span>':'<span class="qw-tag bad">'+esc(x.status)+'</span>'}</td>
           <td class="qw-muted">${ago(x.lastRefresh)}</td></tr>`).join('') : empty(4,'还没有账号')}
       </tbody></table></div>
@@ -2591,15 +2592,15 @@ async function renderAccounts(){
         <button class="qw-btn sm" onclick="importAccount()">粘贴 Token 导入</button>
         <button class="qw-btn sm" onclick="bulk('refresh')">全部刷新余额</button>
         <button class="qw-btn sm" onclick="bulk('claim')">全部领取积分</button>
-        <span class="qw-muted" style="font-size:12px">共 ${st.accounts.length} 个账号 · 剩余 ${fmt(Math.round(st.stats.remaining))} 分</span>
+        <span class="qw-muted" style="font-size:12px">共 ${st.accounts.length} 个账号 · 剩余 ${qfmt(st.stats.remaining)} 分</span>
       </div>
       <div class="table-wrap"><table class="qw-table"><thead><tr>
         <th>账号</th><th>UID</th><th>剩余积分</th><th>已用</th><th>状态</th><th>操作</th></tr></thead><tbody>
         ${st.accounts.length ? st.accounts.map(a=>`<tr>
           <td><div>${esc(shortName(a))}</div><div class="qw-muted" style="font-size:11px">${esc(a.plan || '千问办公')}</div></td>
           <td class="qw-mono qw-muted">${esc((a.uid||'').slice(0,8))}…</td>
-          <td><b>${fmt(Math.round(a.quota?.remaining ?? 0))}</b></td>
-          <td class="qw-muted">${fmt(Math.round(a.quota?.used ?? 0))}</td>
+          <td><b>${qfmt(a.quota?.remaining ?? 0)}</b></td>
+          <td class="qw-muted">${qfmt(a.quota?.used ?? 0)}</td>
           <td>${a.status==='ok'?'<span class="qw-tag ok">正常</span>':'<span class="qw-tag bad">'+esc(a.status)+'</span>'}</td>
           <td class="qw-flex">
             <button class="qw-btn sm" onclick="accAct('account/refresh','${a.id}')">刷新</button>
@@ -2710,7 +2711,7 @@ async function renderSettings(){
         <tr><td style="width:160px" class="qw-muted">账号数</td><td>${st.stats.accounts}</td></tr>
         <tr><td class="qw-muted">模型数</td><td>${st.models.length}</td></tr>
         <tr><td class="qw-muted">API Key</td><td>${st.keys.length}</td></tr>
-        <tr><td class="qw-muted">剩余积分</td><td>${fmt(Math.round(st.stats.remaining))}</td></tr>
+        <tr><td class="qw-muted">剩余积分</td><td>${qfmt(st.stats.remaining)}</td></tr>
         <tr><td class="qw-muted">运行时</td><td class="qw-mono">${st.runtime?.ok ? 'WASM 就绪' : esc(st.runtime?.error || '未知')}</td></tr>
       </tbody></table></div>
     <div class="qw-sec"><h3>模型自检</h3><div class="sub">逐个模型打一条真实请求，检查可用性（会消耗少量积分）</div>
