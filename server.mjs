@@ -39,6 +39,13 @@ const PUBLIC_MODELS = {
   'deepseek-flash': 'deepseek-flash',    // 别名
   'deepseek-v4-pro': 'deepseek-v4-pro',
   'glm-5.3': 'glm-5.3',
+  // 2026-11-18 客户端选择器新增第三方档位（客户端 2.1.0 的「指定模型」列表）
+  'glm-5.3-flash': 'glm-5.3-flash',
+  'kimi-k3.1-pro': 'kimi-k3.1-pro',
+  'minimax-m3.1-flash': 'minimax-m3.1-flash',
+  'step-5-preview': 'step-5-preview',
+  'qwen4-max': 'qwen4-max',              // 上游没有 qwen4-max-preview 这个键，落到 qwen4-max
+  'qwen4-max-preview': 'qwen4-max',
   'qwenwork-lite': 'lite',               // 经济
   'qwenwork-standard': 'flash',          // 标准 = flash（`standard` 这个键被挡）
   'qwenwork-advanced': 'pro',            // 高级 = pro
