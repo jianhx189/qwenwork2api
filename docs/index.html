@@ -10,7 +10,7 @@
 *{box-sizing:border-box}
 :root{
   --bg:#0a0c11; --bg2:#0e1118; --card:#12161f; --card2:#161b26; --line:#232838;
-  --fg:#e8eaf2; --dim:#9aa1b4; --dim2:#6b7285;
+  --fg:#e8eaf2; --dim:#a3aabc; --dim2:#7d8497;
   --accent:#7c5cff; --accent2:#22d3ee; --ok:#34d399; --warn:#fbbf24;
   --code:#0b0e15;
   --max:1120px;
@@ -49,7 +49,7 @@ header:after{content:"";position:absolute;inset:0;background-image:linear-gradie
   padding:5px 12px;border-radius:20px;margin-bottom:20px}
 .eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
 h1{font-size:44px;line-height:1.18;letter-spacing:-.035em;margin:0 0 18px;font-weight:800}
-.lead{font-size:15.5px;color:var(--dim);max-width:520px;margin:0 0 26px}
+.lead{font-size:15.5px;color:var(--dim);max-width:520px;margin:0 0 26px;text-wrap:pretty}
 .cta{display:flex;gap:12px;flex-wrap:wrap}
 .meta{display:flex;gap:22px;margin-top:30px;font-size:12.5px;color:var(--dim2)}
 .meta b{display:block;color:var(--fg);font-size:19px;font-weight:700;letter-spacing:-.02em}
@@ -59,14 +59,14 @@ h1{font-size:44px;line-height:1.18;letter-spacing:-.035em;margin:0 0 18px;font-w
 .codecard .bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--line);background:#0d111a}
 .codecard .bar span{width:9px;height:9px;border-radius:50%;background:#2b3244}
 .codecard .bar b{margin-left:8px;font-size:11.5px;color:var(--dim2);font-weight:500}
-pre{margin:0;padding:16px;overflow:auto;font:12.5px/1.75 ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;color:#c9d1e4;background:var(--code)}
+pre{margin:0;padding:18px 20px;overflow:auto;font:13px/1.75 ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;color:#c9d1e4;background:var(--code)}
 .k{color:#c084fc}.s{color:#7dd3fc}.c{color:#5b6478}.n{color:#fbbf24}
 
 /* sections */
 section{padding:64px 0;border-top:1px solid var(--line)}
-.sec-head{max-width:640px;margin-bottom:34px}
+.sec-head{max-width:660px;margin-bottom:34px}
 .sec-head h2{font-size:27px;letter-spacing:-.03em;margin:0 0 10px;font-weight:750}
-.sec-head p{color:var(--dim);margin:0;font-size:14.5px}
+.sec-head p{color:var(--dim);margin:0;font-size:14.5px;text-wrap:pretty}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
 .feat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;transition:.18s}
@@ -182,7 +182,7 @@ curl https://your-host/v1/chat/completions \
   <div class="wrap">
     <div class="sec-head">
       <h2>它做了什么</h2>
-      <p>协议转换只是起点，真正麻烦的是登录态、设备指纹、限流和账号轮换——这些都在网关里处理好了。</p>
+      <p>协议转换只是起点。真正麻烦的登录态、设备指纹、限流和账号轮换，网关里都已经处理好了。</p>
     </div>
     <div class="grid3">
       <div class="feat">
