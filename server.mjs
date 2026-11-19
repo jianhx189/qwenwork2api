@@ -14,6 +14,9 @@ import { deriveMachineId, deviceProfile, newSalt } from './lib/fingerprint.mjs'
 import { claimDaily, fetchBalance, fetchWallets, today } from './lib/earn.mjs'
 import { ProviderError, errorResponse, redact } from './lib/errors.mjs'
 import { PanelAuth } from './lib/panelauth.mjs'
+import {
+  createModelCooldowns, pickAccount as pickAccountFor, finalError,
+} from './lib/cooldown.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const DATA = path.join(ROOT, 'data')
@@ -235,16 +238,16 @@ function checkKey(authHeader) {
 const MAX_RETRIES = Number(process.env.QW_MAX_RETRIES || 2)               // 首次之外的额外尝试次数
 const HEADER_TIMEOUT = Number(process.env.QW_HEADER_TIMEOUT_MS || 45000)  // 首字节超时
 const STREAM_IDLE = Number(process.env.QW_STREAM_IDLE_MS || 60000)        // 流式空闲超时
+// 429 的冷却时长：只冷却「该账号 × 该上游模型」，不把整个账号标成额度耗尽。
+// 上游对单档位的限流与「账号积分用尽」是两件事，后者由 refreshAccount 的 quota 判定。
+const MODEL_COOLDOWN_MS = Number(process.env.QW_MODEL_COOLDOWN_MS || 60000)
+const modelCooldowns = createModelCooldowns({ defaultMs: MODEL_COOLDOWN_MS })
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-function pickAccount(exclude = new Set()) {
+function pickAccount(exclude = new Set(), model = '') {
   // claimOnly：daily 环境授权的号只能拿来领取，不能进聊天轮转（它的 token 在 prod 上无效）
-  const all = state.accounts.filter(a => a.status !== 'quota_exhausted' && a.access && !a.claimOnly)
-  if (!all.length) return null
-  // 优先选没试过的号；都试过（或只有一个号）时允许同号重试，不能直接放弃
-  const fresh = all.filter(a => !exclude.has(a.id))
-  const pool = fresh.length ? fresh : all
-  return pool.sort((a, b) => (b.quota?.remaining ?? 0) - (a.quota?.remaining ?? 0))[0]
+  // 冷却中的号按「账号 × 模型」粒度跳过，别的档位照常可用（见 lib/cooldown.mjs 头注）
+  return pickAccountFor(state.accounts, { exclude, model, cooldowns: modelCooldowns })
 }
 
 // 首字节超时：真正中断底层 fetch，而不是只在表面 reject
@@ -318,13 +321,15 @@ async function handleChat(req, res, key) {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const acc = body?.accountId
       ? state.accounts.find(a => a.id === body.accountId)
-      : pickAccount(tried)
+      : pickAccount(tried, upstreamModel)
     if (!acc) break
     tried.add(acc.id)
     res._qwAttempts = attempt + 1
     res._qwStarted = false
     try {
       await serveOnce(res, key, body, rt, acc, publicModel, upstreamModel, started)
+      // 出字即证明这个「账号 × 模型」可用：清掉可能残留的冷却，避免成功后被旧冷却挡住
+      modelCooldowns.clear(acc.id, upstreamModel)
       return
     } catch (error) {
       const e = error instanceof ProviderError ? error : new ProviderError(redact(error.message || '千问办公连接失败'), 503)
@@ -334,14 +339,21 @@ async function handleChat(req, res, key) {
       const retryable = e.status >= 500 || e.status === 429 || e.status === 401
       if (!retryable || attempt >= MAX_RETRIES) break
       log({ type: 'retry', key: key.name, account: acc.email || acc.uid, model: publicModel, attempt: attempt + 1, error: e.message })
-      // 401：先续期再试；429/限流：标记该账号，下一轮换号
+      // 401：先续期再试
       if (e.status === 401) { await refreshAccount(acc, { force: true }).catch(() => {}) }
-      if (e.status === 429) { acc.status = 'quota_exhausted' }
+      // 429：只冷却「这个账号 × 这个上游模型」，不再把整号标成 quota_exhausted。
+      // 旧行为（acc.status='quota_exhausted'）会让 pickAccount 永久排除该号，
+      // 单档位限流即演变成整站 503，且状态要等下次余额刷新才复位。
+      if (e.status === 429) {
+        modelCooldowns.note(acc.id, upstreamModel)
+        log({ type: 'model_cooldown', key: key.name, account: acc.email || acc.uid, model: publicModel, upstream: upstreamModel, ms: MODEL_COOLDOWN_MS, error: e.message })
+      }
       await sleep(Math.min(2000, 500 * (attempt + 1)))
     }
   }
 
-  const e = lastErr ?? new ProviderError('没有可用的千问办公账号，请先在后台授权', 503)
+  const e = finalError(lastErr, state.accounts,
+    { model: upstreamModel, modelLabel: publicModel, cooldowns: modelCooldowns })
   log({ type: 'chat_error', key: key.name, model: publicModel, ms: Date.now() - started, error: e.message })
   if (!res.headersSent) {
     const r = errorResponse(e)
